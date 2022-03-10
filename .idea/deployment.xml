@@ -2,17 +2,17 @@
 <project version="4">
   <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="Phoenix (6655cde2-f11f-4666-9946-09866e571e2e)">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/tmp/tmp.m7r2gd8Me3" local="$PROJECT_DIR$" />
-          </mappings>
-        </serverdata>
-      </paths>
       <paths name="Phoenix 0 (8a17214d-6d92-4032-9b10-7cde004b45e4)">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Phoenix 1 (6655cde2-f11f-4666-9946-09866e571e2e)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.m7r2gd8Me3" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

@@ -4,7 +4,8 @@
   <component name="MakefileSettings">
     <option name="linkedExternalProjectsSettings">
       <MakefileProjectSettings>
-        <option name="cleanTarget" value="run" />
+        <option name="buildTarget" value="run" />
+        <option name="cleanTarget" value="clearn" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
