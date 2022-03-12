@@ -7,6 +7,44 @@
 #include <iostream>
 using namespace std;
 
+typedef u_char Sequence;
+typedef char Msg;
+typedef char Event;
+
+typedef struct {
+
+    Sequence Num; //the sequence number for the frame
+    Sequence AckNum; //the acknowlege number for the received frame
+    u_char Flags; //the flags used
+
+
+} Header;
+
+typedef struct {
+
+    //SENDER
+    Sequence prevACK; // last ack received
+    Sequence prevFrame; // last frame received
+    Header header; // pre-initialized header
+
+    struct send_slot {
+        Event timeout;
+        Msg  msg;
+
+    };
+
+    //RECEIVER
+    Sequence nextFrame; //sequence number for next frame expected
+
+    struct receiver_slot {
+
+        int received; //checks if the received message is valid
+        Msg msg;
+
+    };
+
+} State;
+
 void client() {
   cout << "Hello from the client function!\n";
 }
