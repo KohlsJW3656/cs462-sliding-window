@@ -62,7 +62,7 @@ typedef struct {
 
 } State;
 
-int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
+int client(char* ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
 
     struct sockaddr_in serverIpAddress;
     int sock_fd = 0;
@@ -71,8 +71,8 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
 
     memset(packetBuffer, '0', sizeof(packetBuffer));
     serverIpAddress.sin_family = AF_INET;
-    serverIpAddress.sin_port = htons(8080);
-    serverIpAddress.sin_addr.s_addr = inet_addr("192.168.1.5");
+    serverIpAddress.sin_port = htons(port);
+    serverIpAddress.sin_addr.s_addr = inet_addr(ip);
 
     if (connect(sock_fd, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress)) < 0){
         cout<<"connect fail because port and ip issue"<<endl;

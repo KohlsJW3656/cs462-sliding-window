@@ -65,7 +65,7 @@ typedef struct {
 
 } State;
 
-int server(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
+int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
   //this is memory space set aside for storing packets awaiting transmission over networks or storing packets received over networks.
   char packetBuffer[1025];
   struct sockaddr_in serverIpAddress;
@@ -84,7 +84,7 @@ int server(string ip, int port, int protocol, int packetSize, int timeoutType, i
 
   serverIpAddress.sin_family = AF_INET;
   serverIpAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-  serverIpAddress.sin_port = htons(8080);
+  serverIpAddress.sin_port = htons(port);
   bind(clientListener, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress));
   listen(clientListener , 20);
 
