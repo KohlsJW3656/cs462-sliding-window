@@ -4,17 +4,12 @@
 
 #define DEBUG
 
-#include <iostream>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <time.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <stdlib.h>
 using namespace std;
 
 typedef u_char Sequence;
@@ -66,38 +61,45 @@ typedef struct {
 } State;
 
 int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
-  //this is memory space set aside for storing packets awaiting transmission over networks or storing packets received over networks.
-  char packetBuffer[1025];
-  struct sockaddr_in serverIpAddress;
-
-  time_t clock;
-  int clientListener = 0;
-  int clientConnection = 0;
-
-  //create socket
-  clientListener = socket(AF_INET, SOCK_STREAM, 0);
-  if (clientListener < 0){
-    perror("ERROR cannot open socket");
+    int obj_server, sock, reader;
+    struct sockaddr_in address;
+    int opted = 1;
+    int address_length = sizeof(address);
+    char buffer[1024] = {0};
+    char *message = "A message from server !";
+    if (( obj_server = socket ( AF_INET, SOCK_STREAM, 0)) == 0)
+    {
+      perror ( "Opening of Socket Failed !");
+      exit ( EXIT_FAILURE);
+    }
+    if ( setsockopt(obj_server, SOL_SOCKET, SO_REUSEADDR,
+                      &opted, sizeof ( opted )))
+    {
+      perror ( "Can't set the socket" );
+      exit ( EXIT_FAILURE );
+    }
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons( port );
+    if (bind(obj_server, ( struct sockaddr * )&address,
+             sizeof(address))<0)
+    {
+      perror ( "Binding of socket failed !" );
+      exit(EXIT_FAILURE);
+    }
+    if (listen ( obj_server, 3) < 0)
+    {
+      perror ( "Can't listen from the server !");
+      exit(EXIT_FAILURE);
+    }
+    if ((sock = accept(obj_server, (struct sockaddr *)&address, (socklen_t*)&address_length)) < 0)
+    {
+      perror("Accept");
+      exit(EXIT_FAILURE);
+    }
+    reader = read(sock, buffer, 1024);
+    printf("%s\n", buffer);
+    send(sock , message, strlen(message) , 0 );
+    printf("Server : Message has been sent ! \n");
+    return 0;
   }
-  memset(&serverIpAddress, '0', sizeof(serverIpAddress));
-  memset(packetBuffer, '0', sizeof(packetBuffer));
-
-  serverIpAddress.sin_family = AF_INET;
-  serverIpAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-  serverIpAddress.sin_port = htons(port);
-  bind(clientListener, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress));
-  listen(clientListener , 20);
-
-  while(true){
-    cout<<"running server, client requested"<<endl;
-    clientConnection = accept(clientListener, (struct sockaddr*)NULL, NULL);
-
-    clock = time(NULL);
-    snprintf(packetBuffer, sizeof(packetBuffer), "%.24s\r\n", ctime(&clock));
-    write(clientConnection, packetBuffer, strlen(packetBuffer));
-
-    close(clientConnection);
-    sleep(1);
-  }
-  return 0;
-}

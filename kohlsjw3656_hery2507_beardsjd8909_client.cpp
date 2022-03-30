@@ -1,16 +1,8 @@
-#include <iostream>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
-
-
+#include <unistd.h>
+#include <string.h>
 
 using namespace std;
 
@@ -63,31 +55,31 @@ typedef struct {
 } State;
 
 int client(char* ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
-
-    struct sockaddr_in serverIpAddress;
-    int sock_fd = 0;
-    int n = 0;
-    char packetBuffer[1024];
-
-    memset(packetBuffer, '0', sizeof(packetBuffer));
-    serverIpAddress.sin_family = AF_INET;
-    serverIpAddress.sin_port = htons(port);
-    serverIpAddress.sin_addr.s_addr = inet_addr(ip);
-
-    if (connect(sock_fd, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress)) < 0){
-        cout<<"connect fail because port and ip issue"<<endl;
-        return 1;
+    int obj_socket = 0, reader;
+    struct sockaddr_in serv_addr;
+    char *message = "A message from Client !";
+    char buffer[1024] = {0};
+    if (( obj_socket = socket (AF_INET, SOCK_STREAM, 0 )) < 0)
+    {
+      printf ( "Socket creation error !" );
+      return -1;
     }
-
-    while((n = read(sock_fd, packetBuffer, sizeof(packetBuffer)) - 1) > 0){
-        packetBuffer[n] = 0;
-        if (fputs(packetBuffer, stdout) == EOF){
-            cout<<"there is standard error"<<endl;
-        }
-
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(port);
+// Converting IPv4 and IPv6 addresses from text to binary form
+    if(inet_pton ( AF_INET, ip, &serv_addr.sin_addr)<=0)
+    {
+      printf ( "\nInvalid address ! This IP Address is not supported !\n" );
+      return -1;
     }
-    if(n < 0){
-        cout<<"There is standard error"<<endl;
+    if ( connect( obj_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr )) < 0)
+    {
+      printf ( "Connection Failed : Can't establish a connection over this socket !" );
+      return -1;
     }
+    send ( obj_socket , message , strlen(message) , 0 );
+    printf ( "\nClient : Message has been sent !\n" );
+    reader = read ( obj_socket, buffer, 1024 );
+    printf ( "%s\n",buffer );
     return 0;
-}
+  }
