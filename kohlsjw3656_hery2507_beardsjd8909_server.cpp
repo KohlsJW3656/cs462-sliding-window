@@ -85,12 +85,12 @@ int server(string ip, int port, int protocol, int packetSize, int timeoutType, i
   serverIpAddress.sin_family = AF_INET;
   serverIpAddress.sin_addr.s_addr = htonl(INADDR_ANY);
   serverIpAddress.sin_port = htons(8080);
-  bind(clientListener, (struct sockaddr)&serverIpAddress, sizeof(serverIpAddress));
+  bind(clientListener, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress));
   listen(clientListener , 20);
 
   while(true){
     cout<<"running server, client requested"<<endl;
-    clientConnection = accept(clientListener, (struct sockaddr)NULL, NULL);
+    clientConnection = accept(clientListener, (struct sockaddr*)NULL, NULL);
 
     clock = time(NULL);
     snprintf(packetBuffer, sizeof(packetBuffer), "%.24s\r\n", ctime(&clock));
@@ -99,6 +99,5 @@ int server(string ip, int port, int protocol, int packetSize, int timeoutType, i
     close(clientConnection);
     sleep(1);
   }
-
   return 0;
 }

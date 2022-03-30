@@ -54,7 +54,4 @@ int main() {
   else {
     server(ip, port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
   }
-
-
-
 }
