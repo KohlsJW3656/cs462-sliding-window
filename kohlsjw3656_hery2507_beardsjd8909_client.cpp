@@ -18,6 +18,15 @@ typedef u_char Sequence;
 typedef char Msg;
 typedef char Event;
 
+struct Semaphore {
+
+    int mutex;
+    int rcount; //number of readers
+    int rwait; //number of readers waiting
+    int wrt; //boolean to check if write is in progress
+
+};
+
 typedef struct {
 
     Sequence Num; //the sequence number for the frame
@@ -33,6 +42,7 @@ typedef struct {
     Sequence prevACK; // last ack received
     Sequence prevFrame; // last frame received
     Header header; // pre-initialized header
+    Semaphore sendWindowNotFull; //semaphore to see if send window is full
 
     struct send_slot {
         Event timeout;

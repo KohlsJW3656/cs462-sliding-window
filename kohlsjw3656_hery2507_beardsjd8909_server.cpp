@@ -10,11 +10,29 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+struct Semaphore {
+
+    int mutex;
+    int rcount; //number of readers
+    int rwait; //number of readers waiting
+    int wrt; //boolean to check if write is in progress
+
+};
+
+typedef struct {
 
 
 using namespace std;
 
-int server() {
+} Header;
+
+typedef struct {
+
+    //SENDER
+    Sequence prevACK; // last ack received
+    Sequence prevFrame; // last frame received
+    Header header; // pre-initialized header
+    Semaphore sendWindowNotFull; //semaphore to see if send window is full
 
     //this is memory space set aside for storing packets awaiting transmission over networks or storing packets received over networks.
     char packetBuffer[1025];
