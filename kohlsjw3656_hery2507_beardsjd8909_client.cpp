@@ -1,10 +1,17 @@
-//
-// Created by Jonas Kohls on 03/11/2022.
-//
-
-#define DEBUG
-
 #include <iostream>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <arpa/inet.h>
+
+
+
 using namespace std;
 
 typedef u_char Sequence;
@@ -45,6 +52,32 @@ typedef struct {
 
 } State;
 
-void client() {
-  cout << "Hello from the client function!\n";
+int client() {
+
+    struct sockaddr_in serverIpAddress;
+    int sock_fd = 0;
+    int n = 0;
+    char packetBuffer[1024];
+
+    memset(packetBuffer, '0', sizeof(packetBuffer));
+    serverIpAddress.sin_family = AF_INET;
+    serverIpAddress.sin_port = htons(8080);
+    serverIpAddress.sin_addr.s_addr = inet_addr("192.168.1.5");
+
+    if (connect(sock_fd, (struct sockaddr*)&serverIpAddress, sizeof(serverIpAddress)) < 0){
+        cout<<"connect fail because port and ip issue"<<endl;
+        return 1;
+    }
+
+    while((n = read(sock_fd, packetBuffer, sizeof(packetBuffer)) - 1) > 0){
+        packetBuffer[n] = 0;
+        if (fputs(packetBuffer, stdout) == EOF){
+            cout<<"there is standard error"<<endl;
+        }
+
+    }
+    if(n < 0){
+        cout<<"There is standard error"<<endl;
+    }
+    return 0;
 }

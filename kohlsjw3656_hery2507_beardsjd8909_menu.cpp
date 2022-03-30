@@ -8,32 +8,53 @@
 using namespace std;
 
 int main() {
-  int choice;
+    string ip;
+    int port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType;
 
-  do {
-    cout << "\nInitial Setup\n";
-    cout << "1. Client" << endl << "2. Server" << endl << "3. Exit\n";
+    cout << "IP address: ";
+    cin >> ip;
+    cout << "Port: ";
+    cin >> port;
+    cout << "1. GBN" << endl << "2. SR\n";
     cout << "Please select an option: ";
-    cin >> choice;
-
-    switch (choice) {
-      case 1:
-        cout << "\nClient Selected\n";
-        /* Add input here for client */
-        client();
-        break;
-      case 2:
-        cout << "\nServer Selected\n";
-        /* Add input here for server */
-        server();
-        break;
-      case 3:
-        cout << "Goodbye!\n";
-        return 0;
-      default:
-        cout << "Please enter a valid selection\n";
-        break;
+    cin >> protocol;
+    cout << "Size of packet: ";
+    cin >> packetSize;
+    cout << "1. Static Timeout interval" << endl << "2. Dynamic Timeout interval\n";
+    cout << "Please select an option: ";
+    cin >> timeoutType;
+    /* Static */
+    if (timeoutType == 1) {
+        cout << "Timeout Interval: ";
+        cin >> timeoutInterval;
     }
-  }
-  while(choice != 3);
+        /* Dynamic */
+    else {
+        cout << "Multiplication factor for timeout: ";
+        cin >> multiFactor;
+        /* (Ping ip 3 times divided by time) * multiFactor */
+    }
+    cout << "Size of Sliding Window: ";
+    cin >> slidingWindowSize;
+    cout << "Start sequence number: ";
+    cin >> seqStart;
+    cout << "End sequence number: ";
+    cin >> seqEnd;
+
+    cout << "1. Client" << endl << "2. Server\n";
+    cout << "Please select an option: ";
+    cin >> userType;
+
+    /* Client */
+    if (userType == 1) {
+        /* Situational error prompts */
+        client();
+    }
+        /* Server */
+    else {
+        server();
+    }
+
+
+
 }
