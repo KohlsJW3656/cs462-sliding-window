@@ -48,11 +48,11 @@ int main() {
   /* Client */
   if (userType == 1) {
     /* Situational error prompts */
-    client();
+    client(ip, port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
   }
   /* Server */
   else {
-    server();
+    server(ip, port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
   }
 
 

@@ -62,7 +62,7 @@ typedef struct {
 
 } State;
 
-int client() {
+int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
 
     struct sockaddr_in serverIpAddress;
     int sock_fd = 0;
