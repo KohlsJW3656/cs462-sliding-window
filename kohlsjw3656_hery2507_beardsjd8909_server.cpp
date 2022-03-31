@@ -10,6 +10,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <stdlib.h>
+#include <bits/stdc++.h>
+
 using namespace std;
 
 typedef u_char Sequence;
@@ -59,6 +61,165 @@ typedef struct {
     };
 
 } State;
+
+// function that creates the ones complement of a given string
+// data the string to be ones complimented
+string Ones_compelement(string data) {
+
+    for (int i = 0; i < data.length(); i++) {
+
+        if (data[i] == '0') {
+
+            data[i] = '1';
+
+        } else {
+
+            data[i] = '0';
+
+        }
+
+    }
+
+    return data;
+
+}
+
+// function that will return the checksum value of the given string
+// data the string to be checksummed
+// block_size integer size of the block of the data to checksummed
+string checkSum(string data, int block_size) {
+
+    // size of the data
+    int dl = data.length();
+
+    // check if the block_size is divisable by dl if not add 0s in front of data
+    if (dl % block_size != 0) {
+
+        int pad_size = block_size - (dl % block_size);
+
+        for (int i = 0; i < pad_size; i++) {
+
+            data = '0' + data;
+
+        }
+
+    }
+
+    // result of binary addition with carry
+    string result = "";
+
+
+    // first block stored in result
+    for (int i = 0; i < block_size; i++) {
+
+        result += data[i];
+
+    }
+
+    // binary addition of the bock
+    for (int i = block_size; i < dl; i += block_size) {
+
+        // stores next block
+        string next_block = "";
+
+        for (int j = i; j < i + block_size; j++) {
+
+            next_block += data[j];
+
+        }
+
+        // stores the addition
+        string additions = "";
+        int sum = 0, carry = 0;
+
+        for (int k = block_size - 1; k >= 0; k--) {
+
+            sum += (next_block[k] - '0') + (result[k] - '0');
+            carry = sum / 2;
+
+            if (sum == 0) {
+
+                additions = '0' + additions;
+                sum = carry;
+
+            } else if (sum == 1) {
+
+                additions = '1' + additions;
+                sum = carry;
+
+            } else if (sum == 2) {
+
+                additions = '0' + additions;
+                sum = carry;
+
+            } else {
+
+                additions = '1' + additions;
+                sum = carry;
+
+            }
+
+        }
+
+        // after the addition check if carry is 1 then store the addition with carry result in final
+        string final = "";
+
+        if (carry == 1) {
+
+            for (int m = additions.length() - 1; m >= 0; m--) {
+
+                if (carry == 0) {
+
+                    final = additions[m] + final;
+
+                } else if (((additions[m] - '0') + carry) == 0) {
+
+                    final = '0' + final;
+                    carry = 1;
+
+                } else {
+
+                    final = '1' + final;
+                    carry = 0;
+
+                }
+
+            }
+
+            result = final;
+
+        } else {
+
+            result = additions;
+
+        }
+
+    }
+
+    return Ones_compelement(result);
+
+}
+
+// function to check if sender and reciver have the same checksum
+// sender message of the sender
+// recevier message of the reciver
+// block_size integer size of the block of the data to checksummed
+bool validateMessage (string sender, string recevier, int block_size) {
+
+    string sender_checksum = checkSum(sender, block_size);
+    string recevier_checksum = checkSum(recevier + sender_checksum, block_size);
+
+    if (count(recevier_checksum.begin(), recevier_checksum.end(), '0') == block_size) {
+
+        return true;
+
+    } else {
+
+        return false;
+
+    }
+
+}
 
 int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
     int obj_server, sock, reader;
