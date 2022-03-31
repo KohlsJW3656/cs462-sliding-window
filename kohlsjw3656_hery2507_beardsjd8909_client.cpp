@@ -58,7 +58,7 @@ int client(char* ip, int port, int protocol, int packetSize, int timeoutType, in
     int obj_socket = 0, reader;
     struct sockaddr_in serv_addr;
     char *message = "A message from Client !";
-    char buffer[1024] = {0};
+    char buffer[packetSize];
     if (( obj_socket = socket (AF_INET, SOCK_STREAM, 0 )) < 0)
     {
       printf ( "Socket creation error !" );
@@ -79,7 +79,7 @@ int client(char* ip, int port, int protocol, int packetSize, int timeoutType, in
     }
     send ( obj_socket , message , strlen(message) , 0 );
     printf ( "\nClient : Message has been sent !\n" );
-    reader = read ( obj_socket, buffer, 1024 );
+    reader = read ( obj_socket, buffer, packetSize );
     printf ( "%s\n",buffer );
     return 0;
   }

@@ -65,7 +65,7 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
     struct sockaddr_in address;
     int opted = 1;
     int address_length = sizeof(address);
-    char buffer[1024] = {0};
+    char buffer[packetSize];
     char *message = "A message from server !";
     if (( obj_server = socket ( AF_INET, SOCK_STREAM, 0)) == 0)
     {
@@ -97,7 +97,7 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
       perror("Accept");
       exit(EXIT_FAILURE);
     }
-    reader = read(sock, buffer, 1024);
+    reader = read(sock, buffer, packetSize);
     printf("%s\n", buffer);
     send(sock , message, strlen(message) , 0 );
     printf("Server : Message has been sent ! \n");
