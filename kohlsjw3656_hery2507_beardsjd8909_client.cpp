@@ -1,8 +1,10 @@
-#include <stdio.h>
+#include <iostream>
+#include <sys/types.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
+#include <string>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -54,32 +56,54 @@ typedef struct {
 
 } State;
 
-int client(char* ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
-    int obj_socket = 0, reader;
-    struct sockaddr_in serv_addr;
-    char *message = "A message from Client !";
-    char buffer[packetSize];
-    if (( obj_socket = socket (AF_INET, SOCK_STREAM, 0 )) < 0)
-    {
-      printf ( "Socket creation error !" );
-      return -1;
-    }
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-// Converting IPv4 and IPv6 addresses from text to binary form
-    if(inet_pton ( AF_INET, ip, &serv_addr.sin_addr)<=0)
-    {
-      printf ( "\nInvalid address ! This IP Address is not supported !\n" );
-      return -1;
-    }
-    if ( connect( obj_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr )) < 0)
-    {
-      printf ( "Connection Failed : Can't establish a connection over this socket !" );
-      return -1;
-    }
-    send ( obj_socket , message , strlen(message) , 0 );
-    printf ( "\nClient : Message has been sent !\n" );
-    reader = read ( obj_socket, buffer, packetSize );
-    printf ( "%s\n",buffer );
-    return 0;
+int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
+  //	Create a socket
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock == -1) {
+    return 1;
   }
+
+  sockaddr_in hint;
+  hint.sin_family = AF_INET;
+  hint.sin_port = htons(port);
+  inet_pton(AF_INET, ip.c_str(), &hint.sin_addr);
+
+  //	Connect to the server on the socket
+  int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
+  if (connectRes == -1) {
+    return 1;
+  }
+
+  //	While loop:
+  char buf[4096];
+  string userInput;
+
+  do {
+    //		Enter lines of text
+    cout << "> ";
+    getline(cin, userInput);
+
+    //		Send to server
+    int sendRes = send(sock, userInput.c_str(), userInput.size() + 1, 0);
+    if (sendRes == -1) {
+      cout << "Could not send to server! Whoops!\r\n";
+      continue;
+    }
+
+    //		Wait for response
+    memset(buf, 0, 4096);
+    int bytesReceived = recv(sock, buf, 4096, 0);
+    if (bytesReceived == -1) {
+      cout << "There was an error getting response from server\r\n";
+    }
+    else {
+      //		Display response
+      cout << "SERVER> " << string(buf, bytesReceived) << "\r\n";
+    }
+  } while(true);
+
+  //	Close the socket
+  close(sock);
+
+  return 0;
+}

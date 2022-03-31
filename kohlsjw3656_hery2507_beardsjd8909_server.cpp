@@ -4,14 +4,14 @@
 
 #define DEBUG
 
-#include <stdio.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <stdlib.h>
 #include <bits/stdc++.h>
-
+#include <iostream>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <string>
 using namespace std;
 
 typedef u_char Sequence;
@@ -222,45 +222,69 @@ bool validateMessage (string sender, string recevier, int block_size) {
 }
 
 int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
-    int obj_server, sock, reader;
-    struct sockaddr_in address;
-    int opted = 1;
-    int address_length = sizeof(address);
-    char buffer[packetSize];
-    char *message = "A message from server !";
-    if (( obj_server = socket ( AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-      perror ( "Opening of Socket Failed !");
-      exit ( EXIT_FAILURE);
-    }
-    if ( setsockopt(obj_server, SOL_SOCKET, SO_REUSEADDR,
-                      &opted, sizeof ( opted )))
-    {
-      perror ( "Can't set the socket" );
-      exit ( EXIT_FAILURE );
-    }
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons( port );
-    if (bind(obj_server, ( struct sockaddr * )&address,
-             sizeof(address))<0)
-    {
-      perror ( "Binding of socket failed !" );
-      exit(EXIT_FAILURE);
-    }
-    if (listen ( obj_server, 3) < 0)
-    {
-      perror ( "Can't listen from the server !");
-      exit(EXIT_FAILURE);
-    }
-    if ((sock = accept(obj_server, (struct sockaddr *)&address, (socklen_t*)&address_length)) < 0)
-    {
-      perror("Accept");
-      exit(EXIT_FAILURE);
-    }
-    reader = read(sock, buffer, packetSize);
-    printf("%s\n", buffer);
-    send(sock , message, strlen(message) , 0 );
-    printf("Server : Message has been sent ! \n");
-    return 0;
+  int listening = socket(AF_INET, SOCK_STREAM, 0);
+  if (listening == -1) {
+    cerr << "Failed to create socket!" << endl;
+    return -1;
   }
+
+// Bind the ip address and port to a socket
+  sockaddr_in hint;
+  hint.sin_family = AF_INET;
+  hint.sin_port = htons(port);
+  inet_pton(AF_INET, "0.0.0.0", &hint.sin_addr);
+
+  bind(listening, (sockaddr*)&hint, sizeof(hint));
+
+  listen(listening, SOMAXCONN);
+
+  // Wait for a connection
+  sockaddr_in client;
+  socklen_t clientSize = sizeof(client);
+
+  int clientSocket = accept(listening, (sockaddr*)&client, &clientSize);
+
+  char host[NI_MAXHOST];      // Client's remote name
+  char service[NI_MAXSERV];   // Service (i.e. port) the client is connected on
+
+  memset(host, 0, NI_MAXHOST);
+  memset(service, 0, NI_MAXSERV);
+
+  if (getnameinfo((sockaddr*)&client, sizeof(client), host, NI_MAXHOST, service, NI_MAXSERV, 0) == 0) {
+    cout << host << " connected on port " << service << endl;
+  }
+  else {
+    inet_ntop(AF_INET, &client.sin_addr, host, NI_MAXHOST);
+    cout << host << " connected on port " << ntohs(client.sin_port) << endl;
+  }
+
+  // Close listening socket
+  close(listening);
+
+  // While loop: accept and echo message back to client
+  char buf[4096];
+
+  while (true) {
+    memset(buf, 0, 4096);
+
+    // Wait for client to send data
+    int bytesReceived = recv(clientSocket, buf, 4096, 0);
+    if (bytesReceived == -1) {
+      cerr << "Error in recv(). Quitting" << endl;
+      break;
+    }
+
+    if (bytesReceived == 0) {
+      cout << "Client disconnected " << endl;
+      break;
+    }
+
+    cout << string(buf, 0, bytesReceived) << endl;
+    // Echo message back to client
+    send(clientSocket, buf, bytesReceived + 1, 0);
+  }
+
+  // Close the socket
+  close(clientSocket);
+  return 0;
+}

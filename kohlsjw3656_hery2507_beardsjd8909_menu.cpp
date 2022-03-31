@@ -8,7 +8,7 @@
 using namespace std;
 
 int main() {
-  char *ip = new char(20);
+  string ip;
   int port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType;
 
   cout << "IP address: ";
@@ -52,6 +52,6 @@ int main() {
   }
   /* Server */
   else {
-    server( port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
+    server(port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
   }
 }
