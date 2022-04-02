@@ -36,8 +36,6 @@ int main() {
   }
   cout << "Size of Sliding Window: ";
   cin >> slidingWindowSize;
-  cout << "Start sequence number: ";
-  cin >> seqStart;
   cout << "End sequence number: ";
   cin >> seqEnd;
 
@@ -48,10 +46,10 @@ int main() {
   /* Client */
   if (userType == 1) {
     /* Situational error prompts */
-    client(ip, port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
+    client(ip, port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqEnd, userType);
   }
   /* Server */
   else {
-    server(port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqStart, seqEnd, userType);
+    server(port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqEnd, userType);
   }
 }

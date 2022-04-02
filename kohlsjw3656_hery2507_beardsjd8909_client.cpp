@@ -5,6 +5,8 @@
 #include <arpa/inet.h>
 #include <string>
 #include <bits/stdc++.h>
+#include <cstdio>
+#include <cstdlib>
 
 using namespace std;
 
@@ -56,10 +58,54 @@ typedef struct {
 
 } State;
 
-int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
+int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
+  char *filename = (char*)malloc(20 * sizeof(char));
+  FILE *file;
+  char* packet;
+  vector<char**> slidingWindow;
+  string userInput;
+  int packetSeqCounter = 0;
+
+  do {
+    cout << "Please enter the file name: ";
+    cin >> filename;
+    file = fopen(filename, "rb");
+    if (!file) {
+      cout << "Invalid filename\n";
+    }
+  }
+  while (!file);
+
+  /* TODO while things to read */
+  while(true) {
+    packet = (char*) malloc(packetSize + 1);
+    unsigned int num = fread(packet + 20, 1, packetSize - 20, file);
+    if (num) {
+      //packet[0] = (char)packetSeqCounter;
+      cout << num << "\n";
+      for (int i = 0; i < packetSize; i++) {
+        cout << packet[i];
+      }
+      slidingWindow.push_back(&packet);
+      cout << "\n";
+      packetSeqCounter++;
+    }
+    break; //TODO remove
+  }
+  fclose(file);
+
+  for (int i = 0; i < slidingWindow.size(); i++) {
+    cout << slidingWindow[i] << "\n";
+    for (int j = 0; j < packetSize; j++) {
+      cout << *slidingWindow[i][j];
+    }
+    cout << "\n";
+  }
+
   //	Create a socket
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock == -1) {
+    cout << "Failed to create socket\n";
     return 1;
   }
 
@@ -71,17 +117,18 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   //	Connect to the server on the socket
   int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
   if (connectRes == -1) {
+    cout << "Failed to connect to server\n";
     return 1;
   }
 
-  //	While loop:
-  char buf[4096];
-  string userInput;
 
-  do {
+  while (false) {
+    //TODO Assumes header size of 20 (temp for now)
+    //fread(data + 20, 1, packetSize - 20, file);
+    //TODO Populate header packet[0] = whatever
     //		Enter lines of text
     cout << "> ";
-    getline(cin, userInput);
+    //getline(cin, userInput);
 
     //		Send to server
     int sendRes = send(sock, userInput.c_str(), userInput.size() + 1, 0);
@@ -91,16 +138,16 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     }
 
     //		Wait for response
-    memset(buf, 0, 4096);
-    int bytesReceived = recv(sock, buf, 4096, 0);
+    //memset(slidingWindow, 0, slidingWindowSize);
+    int bytesReceived; // = recv(sock, slidingWindow, slidingWindowSize, 0);
     if (bytesReceived == -1) {
       cout << "There was an error getting response from server\r\n";
     }
     else {
       //		Display response
-      cout << "SERVER> " << string(buf, bytesReceived) << "\r\n";
+      cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
     }
-  } while(true);
+  };
 
   //	Close the socket
   close(sock);

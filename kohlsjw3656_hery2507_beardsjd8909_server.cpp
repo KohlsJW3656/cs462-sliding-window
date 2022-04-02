@@ -221,7 +221,7 @@ bool validateMessage (string sender, string recevier, int block_size) {
 
 }
 
-int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqStart, int seqEnd, int userType) {
+int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
   int listening = socket(AF_INET, SOCK_STREAM, 0);
   if (listening == -1) {
     cerr << "Failed to create socket!" << endl;
