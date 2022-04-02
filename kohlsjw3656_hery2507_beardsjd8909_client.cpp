@@ -147,7 +147,37 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       //		Display response
       cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
     }
-  };
+
+    if (0/*PACKET IS MISSING*/) {
+
+        if (protocol == 2) {
+
+            int previousPacketReceived = 0/*the previous packet received in order*/;
+            int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
+
+            if (nextPacketExpected - previousPacketReceived != 1) {
+
+                int missingPackets = nextPacketExpected - previousPacketReceived;
+
+                for (int i = 1; i < missingPackets - 2; i++) {
+
+                    int currentMissingNum = previousPacketReceived + i;
+
+                    //send the missing packet previousPacketReceived + i
+
+                }
+
+            } else {
+
+                //send the missing packet
+
+            }
+
+        }
+
+    }
+
+  } while(true);
 
   //	Close the socket
   close(sock);
