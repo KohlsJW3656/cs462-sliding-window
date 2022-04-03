@@ -204,9 +204,16 @@ string checkSum(string data, int block_size) {
 // sender message of the sender
 // recevier message of the reciver
 // block_size integer size of the block of the data to checksummed
-bool validateMessage (string sender, string recevier, int block_size) {
+bool validateMessage (string sender, string recevier, int block_size, int error) {
 
     string sender_checksum = checkSum(sender, block_size);
+
+    if (error == 1) {
+
+        sender_checksum = Ones_compelement(sender_checksum);
+
+    }
+
     string recevier_checksum = checkSum(recevier + sender_checksum, block_size);
 
     if (count(recevier_checksum.begin(), recevier_checksum.end(), '0') == block_size) {
@@ -226,6 +233,33 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
   if (listening == -1) {
     cerr << "Failed to create socket!" << endl;
     return -1;
+  }
+
+  int errorInput;
+  int randInput;
+  int errorPacket;
+
+  cout << "Would you like to have errors? 1 yes 2 no\n";
+  cin >> errorInput;
+
+  if (errorInput == 1) {
+
+      cout << "Would you like random errors? 1 yes 2 no\n";
+      cin >> randInput;
+
+      if (randInput == 1) {
+
+          int randNum = (rand()%packetSize);
+
+          errorPacket = randNum;
+
+      } else {
+
+          cout << "Enter the packet to error: \n";
+          cin >> errorPacket;
+
+        }
+
   }
 
 // Bind the ip address and port to a socket
