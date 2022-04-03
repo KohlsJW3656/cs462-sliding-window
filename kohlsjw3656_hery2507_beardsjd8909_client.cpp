@@ -203,34 +203,8 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   vector<char**> slidingWindow;
   string userInput;
   int packetSeqCounter = 0;
-  int errorInput;
-  int randInput;
-  int errorPacket;
 
   do {
-
-    cout << "Would you like to have errors? 1 yes 2 no\n";
-    cin >> errorInput;
-
-    if (errorInput == 1) {
-
-        cout << "Would you like random errors? 1 yes 2 no\n";
-        cin >> randInput;
-
-        if (randInput == 1) {
-
-            int randNum = (rand()%packetSize);
-
-            errorPacket = randNum;
-
-        } else {
-
-            cout << "Enter the packet to error: \n";
-            cin >> errorPacket;
-
-        }
-
-    }
 
     cout << "Please enter the file name: ";
     cin >> filename;
