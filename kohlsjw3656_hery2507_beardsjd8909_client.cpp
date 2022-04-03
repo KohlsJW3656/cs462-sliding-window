@@ -58,6 +58,144 @@ typedef struct {
 
 } State;
 
+// function that creates the ones complement of a given string
+// data the string to be ones complimented
+string Ones_compelement(string data) {
+
+    for (int i = 0; i < data.length(); i++) {
+
+        if (data[i] == '0') {
+
+            data[i] = '1';
+
+        } else {
+
+            data[i] = '0';
+
+        }
+
+    }
+
+    return data;
+
+}
+
+// function that will return the checksum value of the given string
+// data the string to be checksummed
+// block_size integer size of the block of the data to checksummed
+string checkSum(string data, int block_size) {
+
+    // size of the data
+    int dl = data.length();
+
+    // check if the block_size is divisable by dl if not add 0s in front of data
+    if (dl % block_size != 0) {
+
+        int pad_size = block_size - (dl % block_size);
+
+        for (int i = 0; i < pad_size; i++) {
+
+            data = '0' + data;
+
+        }
+
+    }
+
+    // result of binary addition with carry
+    string result = "";
+
+
+    // first block stored in result
+    for (int i = 0; i < block_size; i++) {
+
+        result += data[i];
+
+    }
+
+    // binary addition of the bock
+    for (int i = block_size; i < dl; i += block_size) {
+
+        // stores next block
+        string next_block = "";
+
+        for (int j = i; j < i + block_size; j++) {
+
+            next_block += data[j];
+
+        }
+
+        // stores the addition
+        string additions = "";
+        int sum = 0, carry = 0;
+
+        for (int k = block_size - 1; k >= 0; k--) {
+
+            sum += (next_block[k] - '0') + (result[k] - '0');
+            carry = sum / 2;
+
+            if (sum == 0) {
+
+                additions = '0' + additions;
+                sum = carry;
+
+            } else if (sum == 1) {
+
+                additions = '1' + additions;
+                sum = carry;
+
+            } else if (sum == 2) {
+
+                additions = '0' + additions;
+                sum = carry;
+
+            } else {
+
+                additions = '1' + additions;
+                sum = carry;
+
+            }
+
+        }
+
+        // after the addition check if carry is 1 then store the addition with carry result in final
+        string final = "";
+
+        if (carry == 1) {
+
+            for (int m = additions.length() - 1; m >= 0; m--) {
+
+                if (carry == 0) {
+
+                    final = additions[m] + final;
+
+                } else if (((additions[m] - '0') + carry) == 0) {
+
+                    final = '0' + final;
+                    carry = 1;
+
+                } else {
+
+                    final = '1' + final;
+                    carry = 0;
+
+                }
+
+            }
+
+            result = final;
+
+        } else {
+
+            result = additions;
+
+        }
+
+    }
+
+    return Ones_compelement(result);
+
+}
+
 int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
@@ -65,8 +203,35 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   vector<char**> slidingWindow;
   string userInput;
   int packetSeqCounter = 0;
+  int errorInput;
+  int randInput;
+  int errorPacket;
 
   do {
+
+    cout << "Would you like to have errors? 1 yes 2 no\n";
+    cin >> errorInput;
+
+    if (errorInput == 1) {
+
+        cout << "Would you like random errors? 1 yes 2 no\n";
+        cin >> randInput;
+
+        if (randInput == 1) {
+
+            int randNum = (rand()%packetSize);
+
+            errorPacket = randNum;
+
+        } else {
+
+            cout << "Enter the packet to error: \n";
+            cin >> errorPacket;
+
+        }
+
+    }
+
     cout << "Please enter the file name: ";
     cin >> filename;
     file = fopen(filename, "rb");
@@ -122,7 +287,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   }
 
 
-  while (false) {
+  while (true) {
     //TODO Assumes header size of 20 (temp for now)
     //fread(data + 20, 1, packetSize - 20, file);
     //TODO Populate header packet[0] = whatever
@@ -148,7 +313,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
     }
 
-    if (0/*PACKET IS MISSING*/) {
+    if (1/*PACKET IS MISSING*/) {
 
         if (protocol == 2) {
 
