@@ -7,6 +7,7 @@
 #include <bits/stdc++.h>
 #include <cstdio>
 #include <cstdlib>
+#include <list>
 
 using namespace std;
 
@@ -21,6 +22,11 @@ struct Semaphore {
     int rwait; //number of readers waiting
     int wrt; //boolean to check if write is in progress
 
+};
+
+struct hdr {
+  int seq;
+  string checkSum;
 };
 
 typedef struct {
@@ -60,7 +66,7 @@ typedef struct {
 
 // function that creates the ones complement of a given string
 // data the string to be ones complimented
-string Ones_compelement(string data) {
+string onesComp(string data) {
 
     for (int i = 0; i < data.length(); i++) {
 
@@ -83,7 +89,7 @@ string Ones_compelement(string data) {
 // function that will return the checksum value of the given string
 // data the string to be checksummed
 // block_size integer size of the block of the data to checksummed
-string checkSum(string data, int block_size) {
+string createCheckSum(string data, int block_size) {
 
     // size of the data
     int dl = data.length();
@@ -192,45 +198,57 @@ string checkSum(string data, int block_size) {
 
     }
 
-    return Ones_compelement(result);
+    return onesComp(result);
 
+}
+
+void printPacket(char* packet, int packetSize) {
+  for (int i = 0; i < packetSize; i++) {
+    printf("%02X ", packet[i]);
+  }
+  cout << "\n";
+}
+
+struct hdr* getHeader(char* packet) {
+  return (struct hdr*) packet;
 }
 
 int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
   char* packet;
-  vector<char**> slidingWindow;
+  list<char*> slidingWindow;
   string userInput;
   int packetSeqCounter = 0;
+  int packetLoopCounter = 0;
   int errorInput;
   int randInput;
   int errorPacket;
 
   do {
 
-    cout << "Would you like to have errors? 1 yes 2 no\n";
-    cin >> errorInput;
-
-    if (errorInput == 1) {
-
-        cout << "Would you like random errors? 1 yes 2 no\n";
-        cin >> randInput;
-
-        if (randInput == 1) {
-
-            int randNum = (rand()%packetSize);
-
-            errorPacket = randNum;
-
-        } else {
-
-            cout << "Enter the packet to error: \n";
-            cin >> errorPacket;
-
-        }
-
-    }
+//    cout << "Would you like to have errors? 1 yes 2 no\n";
+//    cin >> errorInput;
+//
+//    if (errorInput == 1) {
+//
+//        cout << "Would you like random errors? 1 yes 2 no\n";
+//        cin >> randInput;
+//
+//        if (randInput == 1) {
+//
+//            int randNum = (rand()%packetSize);
+//
+//            errorPacket = randNum;
+//
+//        } else {
+//
+//            cout << "Enter the packet to error: \n";
+//            cin >> errorPacket;
+//
+//        }
+//
+//    }
 
     cout << "Please enter the file name: ";
     cin >> filename;
@@ -240,32 +258,6 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     }
   }
   while (!file);
-
-  /* TODO while things to read */
-  while(true) {
-    packet = (char*) malloc(packetSize + 1);
-    unsigned int num = fread(packet + 20, 1, packetSize - 20, file);
-    if (num) {
-      //packet[0] = (char)packetSeqCounter;
-      cout << num << "\n";
-      for (int i = 0; i < packetSize; i++) {
-        cout << packet[i];
-      }
-      slidingWindow.push_back(&packet);
-      cout << "\n";
-      packetSeqCounter++;
-    }
-    break; //TODO remove
-  }
-  fclose(file);
-
-  for (int i = 0; i < slidingWindow.size(); i++) {
-    cout << slidingWindow[i] << "\n";
-    for (int j = 0; j < packetSize; j++) {
-      cout << *slidingWindow[i][j];
-    }
-    cout << "\n";
-  }
 
   //	Create a socket
   int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -283,26 +275,48 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
   if (connectRes == -1) {
     cout << "Failed to connect to server\n";
-    return 1;
+    //return 1;
   }
 
-
-  while (true) {
-    //TODO Assumes header size of 20 (temp for now)
-    //fread(data + 20, 1, packetSize - 20, file);
-    //TODO Populate header packet[0] = whatever
-    //		Enter lines of text
-    cout << "> ";
-    //getline(cin, userInput);
-
-    //		Send to server
-    int sendRes = send(sock, userInput.c_str(), userInput.size() + 1, 0);
-    if (sendRes == -1) {
-      cout << "Could not send to server! Whoops!\r\n";
-      continue;
+  /* While we haven't reached the end of the file */
+  while(!feof(file)) {
+    /* While our sliding window hasn't been filled up */
+    while (slidingWindow.size() < slidingWindowSize) {
+      packet = (char*) malloc(packetSize + 1);
+      unsigned int num = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
+      /* If reading successful, push packet to front and increase the sequence */
+      if (num) {
+        /* Reset sequence and increment loop */
+        if (packetSeqCounter > seqEnd) {
+          packetSeqCounter = 0;
+          packetLoopCounter++;
+        }
+        slidingWindow.push_front(packet);
+        auto *packetHeader = (struct hdr *) packet;
+        packetHeader->seq = packetSeqCounter;
+        packetHeader->checkSum = createCheckSum(packet + sizeof(struct hdr), 16);
+        packetSeqCounter++;
+        /* Clean up pointer */
+        packetHeader = nullptr;
+        delete packetHeader;
+      }
+      /* Clean up pointer */
+      packet = nullptr;
+      delete packet;
+    }
+    /* Send all packets in our slidingWindow */
+    for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+      /* Send to server */
+      int sendRes = send(sock, *i, packetSize + 1, 0);
+      if (sendRes == -1) {
+        cout << "Failed to send packet to server!\r\n";
+        break;
+      }
+      cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
+      printPacket(*i, packetSize);
     }
 
-    //		Wait for response
+    /* Wait for response */
     //memset(slidingWindow, 0, slidingWindowSize);
     int bytesReceived; // = recv(sock, slidingWindow, slidingWindowSize, 0);
     if (bytesReceived == -1) {
@@ -312,40 +326,28 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       //		Display response
       cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
     }
+  }
+  fclose(file);
 
-    if (1/*PACKET IS MISSING*/) {
-
-        if (protocol == 2) {
-
-            int previousPacketReceived = 0/*the previous packet received in order*/;
-            int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
-
-            if (nextPacketExpected - previousPacketReceived != 1) {
-
-                int missingPackets = nextPacketExpected - previousPacketReceived;
-
-                for (int i = 1; i < missingPackets - 2; i++) {
-
-                    int currentMissingNum = previousPacketReceived + i;
-
-                    //send the missing packet previousPacketReceived + i
-
-                }
-
-            } else {
-
-                //send the missing packet
-
-            }
-
+  if (1/*PACKET IS MISSING*/) {
+    if (protocol == 2) {
+      int previousPacketReceived = 0/*the previous packet received in order*/;
+      int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
+      if (nextPacketExpected - previousPacketReceived != 1) {
+        int missingPackets = nextPacketExpected - previousPacketReceived;
+        for (int i = 1; i < missingPackets - 2; i++) {
+          int currentMissingNum = previousPacketReceived + i;
+          //send the missing packet previousPacketReceived + i
         }
 
+      }
+      else {
+        //send the missing packet
+      }
     }
-
-  } while(true);
-
+  }
+  while(true);
   //	Close the socket
   close(sock);
-
   return 0;
 }
