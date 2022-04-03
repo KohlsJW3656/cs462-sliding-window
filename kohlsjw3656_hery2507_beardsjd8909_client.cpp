@@ -26,7 +26,7 @@ struct Semaphore {
 
 struct hdr {
   int seq;
-  string checkSum;
+  int checkSum;
 };
 
 typedef struct {
@@ -294,7 +294,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
         slidingWindow.push_front(packet);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
-        packetHeader->checkSum = createCheckSum(packet + sizeof(struct hdr), 16);
+        //TODO fix checksum equation packetHeader->checkSum = createCheckSum(packet + sizeof(struct hdr), 16);
         packetSeqCounter++;
         /* Clean up pointer */
         packetHeader = nullptr;
