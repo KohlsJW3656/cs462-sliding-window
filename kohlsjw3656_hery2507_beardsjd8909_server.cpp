@@ -204,9 +204,12 @@ string checkSum(string data, int block_size) {
 // sender message of the sender
 // recevier message of the reciver
 // block_size integer size of the block of the data to checksummed
-bool validateMessage (string sender, string recevier, int block_size, int error) {
+bool validateMessage (int sender, int recevier, int block_size, int error) {
 
-    string sender_checksum = checkSum(sender, block_size);
+  string s = bitset<16>(sender).to_string(); //convers sender to a string 0b indicates that it is in binary
+  string r = bitset<16>(recevier).to_string(); //convers recevier to a string 0b indicates that it is in binary
+
+    string sender_checksum = checkSum(s, block_size);
 
     if (error == 1) {
 
@@ -214,7 +217,7 @@ bool validateMessage (string sender, string recevier, int block_size, int error)
 
     }
 
-    string recevier_checksum = checkSum(recevier + sender_checksum, block_size);
+    string recevier_checksum = checkSum(r + sender_checksum, block_size);
 
     if (count(recevier_checksum.begin(), recevier_checksum.end(), '0') == block_size) {
 
