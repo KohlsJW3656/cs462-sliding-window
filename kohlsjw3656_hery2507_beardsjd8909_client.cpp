@@ -86,119 +86,29 @@ string onesComp(string data) {
 
 }
 
-// function that will return the checksum value of the given string
+
+
+// function that will return an integer value for a
 // data the string to be checksummed
-// block_size integer size of the block of the data to checksummed
-string createCheckSum(string data, int block_size) {
+// len length of the data
+int createCheckSum(const char *data, size_t len) {
 
-    // size of the data
-    int dl = data.length();
+  uint32_t crc = 0b11111111111111111111111111111111;
 
-    // check if the block_size is divisable by dl if not add 0s in front of data
-    if (dl % block_size != 0) {
+  for (size_t i = 0; i < len; i++) {
 
-        int pad_size = block_size - (dl % block_size);
+    char c = data[i];
 
-        for (int i = 0; i < pad_size; i++) {
+    for (size_t j = 0; j < 8; j++) {
 
-            data = '0' + data;
-
-        }
+      uint32_t bit = (c^crc)&1;
+      crc >>= 1;
 
     }
 
-    // result of binary addition with carry
-    string result = "";
+  }
 
-
-    // first block stored in result
-    for (int i = 0; i < block_size; i++) {
-
-        result += data[i];
-
-    }
-
-    // binary addition of the bock
-    for (int i = block_size; i < dl; i += block_size) {
-
-        // stores next block
-        string next_block = "";
-
-        for (int j = i; j < i + block_size; j++) {
-
-            next_block += data[j];
-
-        }
-
-        // stores the addition
-        string additions = "";
-        int sum = 0, carry = 0;
-
-        for (int k = block_size - 1; k >= 0; k--) {
-
-            sum += (next_block[k] - '0') + (result[k] - '0');
-            carry = sum / 2;
-
-            if (sum == 0) {
-
-                additions = '0' + additions;
-                sum = carry;
-
-            } else if (sum == 1) {
-
-                additions = '1' + additions;
-                sum = carry;
-
-            } else if (sum == 2) {
-
-                additions = '0' + additions;
-                sum = carry;
-
-            } else {
-
-                additions = '1' + additions;
-                sum = carry;
-
-            }
-
-        }
-
-        // after the addition check if carry is 1 then store the addition with carry result in final
-        string final = "";
-
-        if (carry == 1) {
-
-            for (int m = additions.length() - 1; m >= 0; m--) {
-
-                if (carry == 0) {
-
-                    final = additions[m] + final;
-
-                } else if (((additions[m] - '0') + carry) == 0) {
-
-                    final = '0' + final;
-                    carry = 1;
-
-                } else {
-
-                    final = '1' + final;
-                    carry = 0;
-
-                }
-
-            }
-
-            result = final;
-
-        } else {
-
-            result = additions;
-
-        }
-
-    }
-
-    return onesComp(result);
+  return crc;
 
 }
 
