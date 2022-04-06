@@ -27,6 +27,13 @@ struct Semaphore {
 
 };
 
+struct hdr {
+    int seq;
+    int checkSum;
+    bool ack;
+    unsigned int packetSize;
+};
+
 typedef struct {
 
     Sequence Num; //the sequence number for the frame
@@ -231,41 +238,27 @@ bool validateMessage (int sender, int recevier, int block_size, int error) {
 
 }
 
+void printPacketServer(char* packet, int packetSize) {
+  for (int i = 0; i < packetSize; i++) {
+    printf("%02X ", packet[i]);
+  }
+  cout << "\n";
+}
+
+struct hdr* getHeaderServer(char* packet) {
+  return (struct hdr*) packet;
+}
+
 int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
+  list<char*> slidingWindow;
+  char* packet;
   int listening = socket(AF_INET, SOCK_STREAM, 0);
   if (listening == -1) {
     cerr << "Failed to create socket!" << endl;
     return -1;
   }
 
-  int errorInput;
-  int randInput;
-  int errorPacket;
-
-  cout << "Would you like to have errors? 1 yes 2 no\n";
-  cin >> errorInput;
-
-  if (errorInput == 1) {
-
-      cout << "Would you like random errors? 1 yes 2 no\n";
-      cin >> randInput;
-
-      if (randInput == 1) {
-
-          int randNum = (rand()%packetSize);
-
-          errorPacket = randNum;
-
-      } else {
-
-          cout << "Enter the packet to error: \n";
-          cin >> errorPacket;
-
-        }
-
-  }
-
-// Bind the ip address and port to a socket
+  /* Bind the ip address and port to a socket */
   sockaddr_in hint;
   hint.sin_family = AF_INET;
   hint.sin_port = htons(port);
@@ -275,7 +268,7 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
 
   listen(listening, SOMAXCONN);
 
-  // Wait for a connection
+  /* Wait for a connection */
   sockaddr_in client;
   socklen_t clientSize = sizeof(client);
 
@@ -295,30 +288,29 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
     cout << host << " connected on port " << ntohs(client.sin_port) << endl;
   }
 
-  // Close listening socket
+  /* Close listening socket */
   close(listening);
 
-  // While loop: accept and echo message back to client
-  char buf[4096];
-
   while (true) {
-    memset(buf, 0, 4096);
-
-    // Wait for client to send data
-    int bytesReceived = recv(clientSocket, buf, 4096, 0);
-    if (bytesReceived == -1) {
-      cerr << "Error in recv(). Quitting" << endl;
-      break;
+    /* While we can receive packets */
+    while (slidingWindow.size() < slidingWindowSize) {
+      // Wait for client to send data
+      packet = (char*) malloc(packetSize + 1);
+      int bytesReceived = recv(clientSocket, packet, packetSize, 0);
+      if (bytesReceived == -1) {
+        cerr << "Error in recv(). Quitting" << endl;
+        break;
+      }
+      if (bytesReceived == 0) {
+        cout << "Client disconnected " << endl;
+        break;
+      }
+      slidingWindow.push_front(packet);
+      //TODO Checksum thing
+      printPacketServer(packet, packetSize);
+      send(clientSocket, packet, bytesReceived + 1, 0);
+      slidingWindow.pop_back();
     }
-
-    if (bytesReceived == 0) {
-      cout << "Client disconnected " << endl;
-      break;
-    }
-
-    cout << string(buf, 0, bytesReceived) << endl;
-    // Echo message back to client
-    send(clientSocket, buf, bytesReceived + 1, 0);
   }
 
   // Close the socket

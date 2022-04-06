@@ -27,6 +27,8 @@ struct Semaphore {
 struct hdr {
   int seq;
   int checkSum;
+  bool ack;
+  unsigned int packetSize;
 };
 
 typedef struct {
@@ -204,6 +206,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
         slidingWindow.push_front(packet);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
+        packetHeader->packetSize = num;
         //TODO fix checksum equation packetHeader->checkSum = createCheckSum(packet + sizeof(struct hdr), 16);
         packetSeqCounter++;
         /* Clean up pointer */
@@ -217,7 +220,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     /* Send all packets in our slidingWindow */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* Send to server */
-      int sendRes = send(sock, *i, packetSize + 1, 0);
+      int sendRes = send(sock, *i, packetSize, 0);
       if (sendRes == -1) {
         cout << "Failed to send packet to server!\r\n";
         break;
@@ -228,14 +231,18 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
 
     /* Wait for response */
     //memset(slidingWindow, 0, slidingWindowSize);
-    int bytesReceived; // = recv(sock, slidingWindow, slidingWindowSize, 0);
+    int bytesReceived; // = recv(sock, slidingWindow, packetSize, 0);
     if (bytesReceived == -1) {
       cout << "There was an error getting response from server\r\n";
     }
     else {
       //		Display response
       cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
+      //TODO If Ack, pop out
+      slidingWindow.pop_back();
     }
+    //TODO remove
+    break;
   }
   fclose(file);
 
