@@ -284,7 +284,6 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
         cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
         slidingWindow.push_front(packet);
         //TODO Checksum thing
-        getHeaderServer(packet)->ack = true;
         if (getHeaderServer(packet)->ack) {
           cout << "Checksum okay" << endl;
           cout << "Packet " << getHeaderServer(packet)->seq << " sent" << endl;

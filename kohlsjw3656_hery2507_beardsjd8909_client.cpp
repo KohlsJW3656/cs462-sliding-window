@@ -66,6 +66,26 @@ typedef struct {
 
 } State;
 
+/* Pass in char* array of bytes, get binary representation as string in bitStr */
+void str2bs(char *bytes, size_t len, char *bitStr) {
+  size_t i;
+  char buffer[9] = "";
+  for(i = 0; i < len; i++) {
+    sprintf(buffer,
+            "%c%c%c%c%c%c%c%c",
+            (bytes[i] & 0x80) ? '1':'0',
+            (bytes[i] & 0x40) ? '1':'0',
+            (bytes[i] & 0x20) ? '1':'0',
+            (bytes[i] & 0x10) ? '1':'0',
+            (bytes[i] & 0x08) ? '1':'0',
+            (bytes[i] & 0x04) ? '1':'0',
+            (bytes[i] & 0x02) ? '1':'0',
+            (bytes[i] & 0x01) ? '1':'0');
+    strncat(bitStr, buffer, 8);
+    buffer[0] = '\0';
+  }
+}
+
 // function that creates the ones complement of a given string
 // data the string to be ones complimented
 string Ones_compelement(string data) {
@@ -88,14 +108,11 @@ string Ones_compelement(string data) {
 
 }
 
-
-
 // function that will return an integer value for a
 // data the string to be checksummed
 // dl length of the data
 // block_size size of the block
-int createCheckSum(const char *data, unsigned int dl, int block_size) {
-
+int createCheckSum(char *data, unsigned int dl, int block_size) {
   // check if the block_size is divisable by dl if not add 0s in front of data
   if (dl % block_size != 0) {
 
@@ -212,11 +229,23 @@ struct hdr* getHeader(char* packet) {
 }
 
 void printPacket(char* packet, int packetSize) {
+  cout << "Seq: " << getHeader(packet)->seq << endl;
   cout << "Checksum: " << getHeader(packet)->checkSum << endl;
-  for (int i = 0; i < packetSize; i++) {
+  cout << "Ack: " << getHeader(packet)->ack << endl;
+  cout << "Packet Size: " << getHeader(packet)->packetSize << endl;
+
+  for (int i = sizeof(struct hdr); i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
   cout << "\n";
+}
+
+void convertDataToBits(char* packet, unsigned int packetSize, char *bitStr2) {
+  for (int i = sizeof(struct hdr); i < packetSize; i++) {
+    char *bitStr = (char*)malloc(packetSize * sizeof(char));
+    str2bs(&packet[i], 8, bitStr);
+    strncat(bitStr2, bitStr, 8);
+  }
 }
 
 string printSlidingWindow(int start, int end) {
@@ -303,7 +332,9 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       /* If reading successful, push packet to front and increase the sequence */
       if (num) {
         slidingWindow.push_front(packet);
-        int checkSum = createCheckSum(packet + sizeof(struct hdr), num, 16);
+        char *bitStr2 = (char*)malloc(num * sizeof(char));
+        convertDataToBits(packet, num, bitStr2);
+        int checkSum = createCheckSum(bitStr2, num, 16);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
         packetHeader->checkSum = checkSum;
@@ -329,7 +360,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
       printPacket(*i, packetSize);
     }
-    
+
     /* Responses */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* Responses */
