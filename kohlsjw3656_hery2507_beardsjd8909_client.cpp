@@ -92,11 +92,9 @@ string Ones_compelement(string data) {
 
 // function that will return an integer value for a
 // data the string to be checksummed
-// len length of the data
-int createCheckSum(const char *data, int block_size) {
-
-  // size of the data
-  int dl = data.length();
+// dl length of the data
+// block_size size of the block
+int createCheckSum(const char *data, int dl, int block_size) {
 
   // check if the block_size is divisable by dl if not add 0s in front of data
   if (dl % block_size != 0) {
@@ -202,7 +200,10 @@ int createCheckSum(const char *data, int block_size) {
 
   }
 
-  return Ones_compelement(result);
+  string onesComp = Ones_compelement(result);
+  int res = stoi(onesComp, 0, 2);
+
+  return res;
 
 }
 
