@@ -69,28 +69,6 @@ typedef struct {
 
 } State;
 
-// function that creates the ones complement of a given string
-// data the string to be ones complimented
-string Ones_compelement(string data) {
-
-    for (int i = 0; i < data.length(); i++) {
-
-        if (data[i] == '0') {
-
-            data[i] = '1';
-
-        } else {
-
-            data[i] = '0';
-
-        }
-
-    }
-
-    return data;
-
-}
-
 // function that will return the checksum value of the given string
 // data the string to be checksummed
 // block_size integer size of the block of the data to checksummed
@@ -203,7 +181,7 @@ string checkSum(string data, int block_size) {
 
     }
 
-    return Ones_compelement(result);
+    return result;
 
 }
 
@@ -213,20 +191,13 @@ string checkSum(string data, int block_size) {
 // block_size integer size of the block of the data to checksummed
 bool validateMessage (int sender, int recevier, int block_size, int error) {
 
-  string s = bitset<16>(sender).to_string(); //convers sender to a string 0b indicates that it is in binary
-  string r = bitset<16>(recevier).to_string(); //convers recevier to a string 0b indicates that it is in binary
+  string s = bitset<16>(sender).to_string(); //converts sender to a string 0b indicates that it is in binary
+  string r = bitset<16>(recevier).to_string(); //converts receiver to a string 0b indicates that it is in binary
 
     string sender_checksum = checkSum(s, block_size);
+    string receiver_checksum = checkSum(r + sender_checksum, block_size);
 
-    if (error == 1) {
-
-        sender_checksum = Ones_compelement(sender_checksum);
-
-    }
-
-    string recevier_checksum = checkSum(r + sender_checksum, block_size);
-
-    if (count(recevier_checksum.begin(), recevier_checksum.end(), '0') == block_size) {
+    if (count(receiver_checksum.begin(), receiver_checksum.end(), '1') == block_size) {
 
         return true;
 
