@@ -94,7 +94,7 @@ string Ones_compelement(string data) {
 // data the string to be checksummed
 // dl length of the data
 // block_size size of the block
-int createCheckSum(const char *data, int dl, int block_size) {
+int createCheckSum(const char *data, unsigned int dl, int block_size) {
 
   // check if the block_size is divisable by dl if not add 0s in front of data
   if (dl % block_size != 0) {
@@ -207,15 +207,24 @@ int createCheckSum(const char *data, int dl, int block_size) {
 
 }
 
+struct hdr* getHeader(char* packet) {
+  return (struct hdr*) packet;
+}
+
 void printPacket(char* packet, int packetSize) {
+  cout << "Checksum: " << getHeader(packet)->checkSum << endl;
   for (int i = 0; i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
   cout << "\n";
 }
 
-struct hdr* getHeader(char* packet) {
-  return (struct hdr*) packet;
+string printSlidingWindow(int start, int end) {
+  string slidingWindow = "Current window = [";
+  for (int i = start; i < end; i++) {
+    slidingWindow+= to_string(i) + ", ";
+  }
+  return slidingWindow += to_string(end) + "]";
 }
 
 int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
@@ -229,6 +238,8 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   int errorInput;
   int randInput;
   int errorPacket;
+  int windowStart = 0;
+  int windowEnd = slidingWindowSize - 1;
 
   do {
 
@@ -291,16 +302,13 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       unsigned int num = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
       /* If reading successful, push packet to front and increase the sequence */
       if (num) {
-        /* Reset sequence and increment loop */
-        if (packetSeqCounter > seqEnd) {
-          packetSeqCounter = 0;
-          packetLoopCounter++;
-        }
         slidingWindow.push_front(packet);
+        int checkSum = createCheckSum(packet + sizeof(struct hdr), num, 16);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
-        packetHeader->packetSize = num;
-        //TODO fix checksum equation packetHeader->checkSum = createCheckSum(packet + sizeof(struct hdr), 16);
+        packetHeader->checkSum = checkSum;
+        packetHeader->packetSize = num + sizeof(struct hdr);
+        packetHeader->ack = false;
         packetSeqCounter++;
         /* Clean up pointer */
         packetHeader = nullptr;
@@ -321,42 +329,60 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
       printPacket(*i, packetSize);
     }
-
-    /* Wait for response */
-    //memset(slidingWindow, 0, slidingWindowSize);
-    int bytesReceived; // = recv(sock, slidingWindow, packetSize, 0);
-    if (bytesReceived == -1) {
-      cout << "There was an error getting response from server\r\n";
+    
+    /* Responses */
+    for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+      /* Responses */
+      packet = (char*) malloc(packetSize + 1);
+      int bytesReceived = recv(sock, packet, packetSize, 0);
+      if (bytesReceived == -1) {
+        cout << "There was an error getting response from server\r\n";
+      }
+      else {
+        if (getHeader(packet)->ack) {
+          cout << "Ack " << getHeader(packet)->seq << " received" << endl;
+          /* If this is the correct packet we were looking for */
+          if (getHeader(packet)->seq == getHeader(slidingWindow.back())->seq) {
+            slidingWindow.pop_back();
+            windowStart++;
+            windowEnd++;
+            cout << printSlidingWindow(windowStart, windowEnd) << endl;
+          }
+          else {
+            //TODO put packet on another list of acked packets
+          }
+        }
+        else {
+          //TODO check for time outs
+          cout << "Ack was false" << endl;
+          printPacket(packet, packetSize);
+        }
+      }
+      /* Clean up pointer */
+      packet = nullptr;
+      delete packet;
     }
-    else {
-      //		Display response
-      cout << "SERVER> " << /*string(slidingWindow, bytesReceived) << */"\r\n";
-      //TODO If Ack, pop out
-      slidingWindow.pop_back();
-    }
-    //TODO remove
-    break;
   }
   fclose(file);
 
-  if (1/*PACKET IS MISSING*/) {
-    if (protocol == 2) {
-      int previousPacketReceived = 0/*the previous packet received in order*/;
-      int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
-      if (nextPacketExpected - previousPacketReceived != 1) {
-        int missingPackets = nextPacketExpected - previousPacketReceived;
-        for (int i = 1; i < missingPackets - 2; i++) {
-          int currentMissingNum = previousPacketReceived + i;
-          //send the missing packet previousPacketReceived + i
-        }
-
-      }
-      else {
-        //send the missing packet
-      }
-    }
-  }
-  while(true);
+//  if (1/*PACKET IS MISSING*/) {
+//    if (protocol == 2) {
+//      int previousPacketReceived = 0/*the previous packet received in order*/;
+//      int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
+//      if (nextPacketExpected - previousPacketReceived != 1) {
+//        int missingPackets = nextPacketExpected - previousPacketReceived;
+//        for (int i = 1; i < missingPackets - 2; i++) {
+//          int currentMissingNum = previousPacketReceived + i;
+//          //send the missing packet previousPacketReceived + i
+//        }
+//
+//      }
+//      else {
+//        //send the missing packet
+//      }
+//    }
+//  }
+//  while(true);
   //	Close the socket
   close(sock);
   return 0;

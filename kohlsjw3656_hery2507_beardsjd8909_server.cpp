@@ -209,15 +209,24 @@ bool validateMessage (int sender, int recevier, int block_size, int error) {
 
 }
 
+struct hdr* getHeaderServer(char* packet) {
+  return (struct hdr*) packet;
+}
+
 void printPacketServer(char* packet, int packetSize) {
+  cout << "Checksum: " << getHeaderServer(packet)->checkSum << endl;
   for (int i = 0; i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
   cout << "\n";
 }
 
-struct hdr* getHeaderServer(char* packet) {
-  return (struct hdr*) packet;
+string printSlidingWindowServer(int start, int end) {
+  string slidingWindow = "Current window = [";
+  for (int i = start; i < end; i++) {
+    slidingWindow+= to_string(i) + ", ";
+  }
+  return slidingWindow += to_string(end) + "]";
 }
 
 int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
@@ -228,6 +237,8 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
     cerr << "Failed to create socket!" << endl;
     return -1;
   }
+  int windowStart = 0;
+  int windowEnd = slidingWindowSize - 1;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -268,19 +279,33 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
       // Wait for client to send data
       packet = (char*) malloc(packetSize + 1);
       int bytesReceived = recv(clientSocket, packet, packetSize, 0);
-      if (bytesReceived == -1) {
-        cerr << "Error in recv(). Quitting" << endl;
-        break;
+      /* If the packet fits within the sequence */
+      if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
+        cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
+        slidingWindow.push_front(packet);
+        //TODO Checksum thing
+        getHeaderServer(packet)->ack = true;
+        if (getHeaderServer(packet)->ack) {
+          cout << "Checksum okay" << endl;
+          cout << "Packet " << getHeaderServer(packet)->seq << " sent" << endl;
+          send(clientSocket, packet, bytesReceived + 1, 0);
+          windowStart++;
+          windowEnd++;
+          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+          if (windowEnd > seqEnd) {
+            windowEnd = 0;
+          }
+        }
+        else {
+          cout << "Checksum failed" << endl;
+          send(clientSocket, packet, bytesReceived + 1, 0);
+          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+        }
+        //printPacketServer(packet, packetSize);
+        packet = nullptr;
+        delete packet;
+        slidingWindow.pop_back();
       }
-      if (bytesReceived == 0) {
-        cout << "Client disconnected " << endl;
-        break;
-      }
-      slidingWindow.push_front(packet);
-      //TODO Checksum thing
-      printPacketServer(packet, packetSize);
-      send(clientSocket, packet, bytesReceived + 1, 0);
-      slidingWindow.pop_back();
     }
   }
 
