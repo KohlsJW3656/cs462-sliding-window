@@ -88,7 +88,7 @@ void str2bs(char *bytes, size_t len, char *bitStr) {
 
 // function that creates the ones complement of a given string
 // data the string to be ones complimented
-string Ones_compelement(string data) {
+string OnesCompelement(string data) {
 
   for (int i = 0; i < data.length(); i++) {
 
@@ -109,18 +109,18 @@ string Ones_compelement(string data) {
 }
 
 // function that will return an integer value for a
-// data the string to be checksummed
-// dl length of the data
+// packet the string to be checksummed
+// packetLen length of the data
 // block_size size of the block
-int createCheckSum(char *data, unsigned int dl, int block_size) {
+int createCheckSum(char *packet, unsigned int packetLen, int block_size) {
   // check if the block_size is divisable by dl if not add 0s in front of data
-  if (dl % block_size != 0) {
+  if (packetLen % block_size != 0) {
 
-    int pad_size = block_size - (dl % block_size);
+    int pad_size = block_size - (packetLen % block_size);
 
     for (int i = 0; i < pad_size; i++) {
 
-      data = '0' + data;
+      packet = '0' + packet;
 
     }
 
@@ -133,19 +133,19 @@ int createCheckSum(char *data, unsigned int dl, int block_size) {
   // first block stored in result
   for (int i = 0; i < block_size; i++) {
 
-    result += data[i];
+    result += packet[i];
 
   }
 
   // binary addition of the bock
-  for (int i = block_size; i < dl; i += block_size) {
+  for (int i = block_size; i < packetLen; i += block_size) {
 
     // stores next block
     string next_block = "";
 
     for (int j = i; j < i + block_size; j++) {
 
-      next_block += data[j];
+      next_block += packet[j];
 
     }
 
@@ -217,7 +217,7 @@ int createCheckSum(char *data, unsigned int dl, int block_size) {
 
   }
 
-  string onesComp = Ones_compelement(result);
+  string onesComp = OnesCompelement(result);
   int res = stoi(onesComp, 0, 2);
 
   return res;

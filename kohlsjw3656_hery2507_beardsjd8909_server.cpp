@@ -69,22 +69,42 @@ typedef struct {
 
 } State;
 
-// function that will return the checksum value of the given string
-// data the string to be checksummed
-// block_size integer size of the block of the data to checksummed
-string checkSum(string data, int block_size) {
+// function that creates the ones complement of a given string
+// data the string to be ones complimented
+string ErrorComplement(string data) {
 
-    // size of the data
-    int dl = data.length();
+  for (int i = 0; i < data.length(); i++) {
+
+    if (data[i] == '0') {
+
+      data[i] = '1';
+
+    } else {
+
+      data[i] = '0';
+
+    }
+
+  }
+
+  return data;
+
+}
+
+// function that will return the checksum value of the given string
+// packet the string to be checksummed
+// packetLen unsigned int value of the length of the packet
+// block_size integer size of the block of the data to checksummed
+string checkSum(string packet, unsigned  int packetLen, int block_size) {
 
     // check if the block_size is divisable by dl if not add 0s in front of data
-    if (dl % block_size != 0) {
+    if (packetLen % block_size != 0) {
 
-        int pad_size = block_size - (dl % block_size);
+        int pad_size = block_size - (packetLen % block_size);
 
         for (int i = 0; i < pad_size; i++) {
 
-            data = '0' + data;
+            packet = '0' + packet;
 
         }
 
@@ -97,19 +117,19 @@ string checkSum(string data, int block_size) {
     // first block stored in result
     for (int i = 0; i < block_size; i++) {
 
-        result += data[i];
+        result += packet[i];
 
     }
 
     // binary addition of the bock
-    for (int i = block_size; i < dl; i += block_size) {
+    for (int i = block_size; i < packetLen; i += block_size) {
 
         // stores next block
         string next_block = "";
 
         for (int j = i; j < i + block_size; j++) {
 
-            next_block += data[j];
+            next_block += packet[j];
 
         }
 
@@ -191,21 +211,24 @@ string checkSum(string data, int block_size) {
 // block_size integer size of the block of the data to checksummed
 bool validateMessage (int sender, int recevier, int block_size, int error) {
 
-  string s = bitset<16>(sender).to_string(); //converts sender to a string 0b indicates that it is in binary
-  string r = bitset<16>(recevier).to_string(); //converts receiver to a string 0b indicates that it is in binary
+  string s = bitset<16>(sender).to_string(); //converts sender to a string
+  string r = bitset<16>(recevier).to_string(); //converts receiver to a string
 
-    string sender_checksum = checkSum(s, block_size);
-    string receiver_checksum = checkSum(r + sender_checksum, block_size);
+  unsigned int sLen = s.length();
+  unsigned int rLen = r.length();
 
-    if (count(receiver_checksum.begin(), receiver_checksum.end(), '1') == block_size) {
+  string sender_checksum = checkSum(s, sLen, block_size);
+  string receiver_checksum = checkSum(r + sender_checksum, rLen, block_size);
 
-        return true;
+  if (count(receiver_checksum.begin(), receiver_checksum.end(), '1') == block_size) {
 
-    } else {
+    return true;
 
-        return false;
+  } else {
 
-    }
+    return false;
+
+  }
 
 }
 
