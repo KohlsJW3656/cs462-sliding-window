@@ -31,7 +31,7 @@ struct hdr {
     int seq;
     int checkSum;
     bool ack;
-    unsigned int packetSize;
+    unsigned int dataSize;
 };
 
 typedef struct {
@@ -205,31 +205,42 @@ string checkSum(string packet, unsigned  int packetLen, int block_size) {
 
 }
 
-// function to check if sender and reciver have the same checksum
+// function to check if sender and receiver have the same checksum
 // sender message of the sender
-// recevier message of the reciver
+// receiver message of the receiver
 // block_size integer size of the block of the data to checksummed
-bool validateMessage (int sender, int recevier, int block_size, int error) {
+bool validateMessage (int clientChecksum, char* packetData, unsigned int packetSize, int block_size, int error) {
+  string clientChecksumString = bitset<16>(clientChecksum).to_string(); //converts sender to a string
+  string receiver_checksum = checkSum(packetData + clientChecksumString, packetSize, block_size);
+  return (count(receiver_checksum.begin(), receiver_checksum.end(), '1') == block_size);
+}
 
-  string s = bitset<16>(sender).to_string(); //converts sender to a string
-  string r = bitset<16>(recevier).to_string(); //converts receiver to a string
-
-  unsigned int sLen = s.length();
-  unsigned int rLen = r.length();
-
-  string sender_checksum = checkSum(s, sLen, block_size);
-  string receiver_checksum = checkSum(r + sender_checksum, rLen, block_size);
-
-  if (count(receiver_checksum.begin(), receiver_checksum.end(), '1') == block_size) {
-
-    return true;
-
-  } else {
-
-    return false;
-
+/* Pass in char* array of bytes, get binary representation as string in bitStr */
+void str2bsServer(char *bytes, size_t len, char *bitStr) {
+  size_t i;
+  char buffer[9] = "";
+  for(i = 0; i < len; i++) {
+    sprintf(buffer,
+            "%c%c%c%c%c%c%c%c",
+            (bytes[i] & 0x80) ? '1':'0',
+            (bytes[i] & 0x40) ? '1':'0',
+            (bytes[i] & 0x20) ? '1':'0',
+            (bytes[i] & 0x10) ? '1':'0',
+            (bytes[i] & 0x08) ? '1':'0',
+            (bytes[i] & 0x04) ? '1':'0',
+            (bytes[i] & 0x02) ? '1':'0',
+            (bytes[i] & 0x01) ? '1':'0');
+    strncat(bitStr, buffer, 8);
+    buffer[0] = '\0';
   }
+}
 
+void convertDataToBitsServer(char* packet, unsigned int dataSize, char *bitStr2) {
+  char *bitStr = (char*)malloc((dataSize * 1000) * sizeof(char));
+  for (int i = sizeof(struct hdr); i < dataSize; i++) {
+    str2bsServer(&packet[i], 8, bitStr);
+    strncat(bitStr2, bitStr, 8);
+  }
 }
 
 struct hdr* getHeaderServer(char* packet) {
@@ -237,8 +248,12 @@ struct hdr* getHeaderServer(char* packet) {
 }
 
 void printPacketServer(char* packet, int packetSize) {
+  cout << "Seq: " << getHeaderServer(packet)->seq << endl;
   cout << "Checksum: " << getHeaderServer(packet)->checkSum << endl;
-  for (int i = 0; i < packetSize; i++) {
+  cout << "Ack: " << getHeaderServer(packet)->ack << endl;
+  cout << "Data Size: " << getHeaderServer(packet)->dataSize << endl;
+
+  for (int i = sizeof(struct hdr); i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
   cout << "\n";
@@ -302,15 +317,25 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
       // Wait for client to send data
       packet = (char*) malloc(packetSize + 1);
       int bytesReceived = recv(clientSocket, packet, packetSize, 0);
+      if (bytesReceived == -1) {
+        cout << "Error\r\n";
+        break;
+      }
+      printPacketServer(packet, getHeaderServer(packet)->dataSize);
       /* If the packet fits within the sequence */
       if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
         cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
         slidingWindow.push_front(packet);
-        //TODO Checksum thing
+        char *bitStr2 = (char*)malloc((getHeaderServer(packet)->dataSize  + 1)* sizeof(char));
+        convertDataToBitsServer(packet, (getHeaderServer(packet)->dataSize + 1), bitStr2);
+        if (validateMessage(getHeaderServer(packet)->checkSum, bitStr2, getHeaderServer(packet)->dataSize, 16, 0)) {
+          getHeaderServer(packet)->ack = true;
+        }
+        printPacketServer(packet, packetSize);
         if (getHeaderServer(packet)->ack) {
           cout << "Checksum okay" << endl;
-          cout << "Packet " << getHeaderServer(packet)->seq << " sent" << endl;
-          send(clientSocket, packet, bytesReceived + 1, 0);
+          cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
+          send(clientSocket, packet, getHeaderServer(packet)->dataSize, 0);
           windowStart++;
           windowEnd++;
           cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
@@ -320,12 +345,10 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
         }
         else {
           cout << "Checksum failed" << endl;
-          send(clientSocket, packet, bytesReceived + 1, 0);
+          send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
           cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
         }
         //printPacketServer(packet, packetSize);
-        packet = nullptr;
-        delete packet;
         slidingWindow.pop_back();
       }
     }

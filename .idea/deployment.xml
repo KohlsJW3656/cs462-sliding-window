@@ -2,10 +2,17 @@
 <project version="4">
   <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="poseidon1 (7c85b0d6-447a-4114-a94f-f62a1dccb4ab)">
+      <paths name="Poseidon 0">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/tmp.mif50Lifkl" local="$PROJECT_DIR$" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Poseidon 1 (6655cde2-f11f-4666-9946-09866e571e2e)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.rD36ikosQO" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

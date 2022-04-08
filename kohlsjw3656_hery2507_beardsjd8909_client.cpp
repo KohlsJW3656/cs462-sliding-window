@@ -28,7 +28,7 @@ struct hdr {
   int seq;
   int checkSum;
   bool ack;
-  unsigned int packetSize;
+  unsigned int dataSize;
 };
 
 typedef struct {
@@ -120,7 +120,7 @@ int createCheckSum(char *packet, unsigned int packetLen, int block_size) {
 
     for (int i = 0; i < pad_size; i++) {
 
-      packet = '0' + packet;
+      *packet = '0' + *packet;
 
     }
 
@@ -232,7 +232,7 @@ void printPacket(char* packet, int packetSize) {
   cout << "Seq: " << getHeader(packet)->seq << endl;
   cout << "Checksum: " << getHeader(packet)->checkSum << endl;
   cout << "Ack: " << getHeader(packet)->ack << endl;
-  cout << "Packet Size: " << getHeader(packet)->packetSize << endl;
+  cout << "Data Size: " << getHeader(packet)->dataSize << endl;
 
   for (int i = sizeof(struct hdr); i < packetSize; i++) {
     printf("%02X ", packet[i]);
@@ -240,9 +240,9 @@ void printPacket(char* packet, int packetSize) {
   cout << "\n";
 }
 
-void convertDataToBits(char* packet, unsigned int packetSize, char *bitStr2) {
-  for (int i = sizeof(struct hdr); i < packetSize; i++) {
-    char *bitStr = (char*)malloc(packetSize * sizeof(char));
+void convertDataToBits(char* packet, unsigned int dataSize, char *bitStr2) {
+  for (int i = sizeof(struct hdr); i < dataSize; i++) {
+    char *bitStr = (char*)malloc(dataSize * sizeof(char));
     str2bs(&packet[i], 8, bitStr);
     strncat(bitStr2, bitStr, 8);
   }
@@ -328,44 +328,38 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     /* While our sliding window hasn't been filled up */
     while (slidingWindow.size() < slidingWindowSize) {
       packet = (char*) malloc(packetSize + 1);
-      unsigned int num = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
+      unsigned int dataSize = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
       /* If reading successful, push packet to front and increase the sequence */
-      if (num) {
+      if (dataSize) {
         slidingWindow.push_front(packet);
-        char *bitStr2 = (char*)malloc(num * sizeof(char));
-        convertDataToBits(packet, num, bitStr2);
-        int checkSum = createCheckSum(bitStr2, num, 16);
+        char *bitStr2 = (char*)malloc((dataSize + 1 ) * sizeof(char));
+        convertDataToBits(packet, dataSize, bitStr2);
+        int checkSum = createCheckSum(bitStr2, dataSize, 16);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
         packetHeader->checkSum = checkSum;
-        packetHeader->packetSize = num + sizeof(struct hdr);
+        packetHeader->dataSize = dataSize + 1;
         packetHeader->ack = false;
         packetSeqCounter++;
-        /* Clean up pointer */
-        packetHeader = nullptr;
-        delete packetHeader;
       }
-      /* Clean up pointer */
-      packet = nullptr;
-      delete packet;
     }
     /* Send all packets in our slidingWindow */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* Send to server */
-      int sendRes = send(sock, *i, packetSize, 0);
+      cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
+      printPacket(*i, getHeader(*i)->dataSize);
+      int sendRes = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
       if (sendRes == -1) {
         cout << "Failed to send packet to server!\r\n";
         break;
       }
-      cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
-      printPacket(*i, packetSize);
     }
 
     /* Responses */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
-      /* Responses */
-      packet = (char*) malloc(packetSize + 1);
-      int bytesReceived = recv(sock, packet, packetSize, 0);
+      /* Packet header responses */
+      packet = (char*) malloc(sizeof(struct hdr));
+      int bytesReceived = recv(sock, packet, sizeof(struct hdr), 0);
       if (bytesReceived == -1) {
         cout << "There was an error getting response from server\r\n";
       }
