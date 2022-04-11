@@ -1,4 +1,4 @@
-BOOST_ROOT := boost_1_66_0
+BOOST_ROOT := boost
 BOOST_INC := ${BOOST_ROOT}/include
 
 run : menu.o client.o server.o

@@ -4,10 +4,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string>
-#include <bits/stdc++.h>
 #include <cstdio>
 #include <cstdlib>
 #include <list>
+#include "boost/crc.hpp"
 
 using namespace std;
 
@@ -16,212 +16,50 @@ typedef char Msg;
 typedef char Event;
 
 struct Semaphore {
-
-    int mutex;
-    int rcount; //number of readers
-    int rwait; //number of readers waiting
-    int wrt; //boolean to check if write is in progress
-
+  int mutex;
+  int rcount; //number of readers
+  int rwait; //number of readers waiting
+  int wrt; //boolean to check if write is in progress
 };
 
 struct hdr {
   int seq;
-  int checkSum;
+  uint32_t checkSum;
   bool ack;
   unsigned int dataSize;
 };
 
 typedef struct {
-
-    Sequence Num; //the sequence number for the frame
-    Sequence AckNum; //the acknowlege number for the received frame
-    u_char Flags; //the flags used
-
-
+  Sequence Num; //the sequence number for the frame
+  Sequence AckNum; //the acknowlege number for the received frame
+  u_char Flags; //the flags used
 } Header;
 
 typedef struct {
+  //SENDER
+  Sequence prevACK; // last ack received
+  Sequence prevFrame; // last frame received
+  Header header; // pre-initialized header
+  Semaphore sendWindowNotFull; //semaphore to see if send window is full
 
-    //SENDER
-    Sequence prevACK; // last ack received
-    Sequence prevFrame; // last frame received
-    Header header; // pre-initialized header
-    Semaphore sendWindowNotFull; //semaphore to see if send window is full
+  struct send_slot {
+    Event timeout;
+    Msg  msg;
+  };
 
-    struct send_slot {
-        Event timeout;
-        Msg  msg;
+  //RECEIVER
+  Sequence nextFrame; //sequence number for next frame expected
 
-    };
-
-    //RECEIVER
-    Sequence nextFrame; //sequence number for next frame expected
-
-    struct receiver_slot {
-
-        int received; //checks if the received message is valid
-        Msg msg;
-
-    };
-
+  struct receiver_slot {
+    int received; //checks if the received message is valid
+    Msg msg;
+  };
 } State;
 
-/* Pass in char* array of bytes, get binary representation as string in bitStr */
-void str2bs(char *bytes, size_t len, char *bitStr) {
-  size_t i;
-  char buffer[9] = "";
-  for(i = 0; i < len; i++) {
-    sprintf(buffer,
-            "%c%c%c%c%c%c%c%c",
-            (bytes[i] & 0x80) ? '1':'0',
-            (bytes[i] & 0x40) ? '1':'0',
-            (bytes[i] & 0x20) ? '1':'0',
-            (bytes[i] & 0x10) ? '1':'0',
-            (bytes[i] & 0x08) ? '1':'0',
-            (bytes[i] & 0x04) ? '1':'0',
-            (bytes[i] & 0x02) ? '1':'0',
-            (bytes[i] & 0x01) ? '1':'0');
-    strncat(bitStr, buffer, 8);
-    buffer[0] = '\0';
-  }
-}
-
-// function that creates the ones complement of a given string
-// data the string to be ones complimented
-string OnesCompelement(string data) {
-
-  for (int i = 0; i < data.length(); i++) {
-
-    if (data[i] == '0') {
-
-      data[i] = '1';
-
-    } else {
-
-      data[i] = '0';
-
-    }
-
-  }
-
-  return data;
-
-}
-
-// function that will return an integer value for a
-// packet the string to be checksummed
-// packetLen length of the data
-// block_size size of the block
-int createCheckSum(char *packet, unsigned int packetLen, int block_size) {
-  // check if the block_size is divisable by dl if not add 0s in front of data
-  if (packetLen % block_size != 0) {
-
-    int pad_size = block_size - (packetLen % block_size);
-
-    for (int i = 0; i < pad_size; i++) {
-
-      *packet = '0' + *packet;
-
-    }
-
-  }
-
-  // result of binary addition with carry
-  string result = "";
-
-
-  // first block stored in result
-  for (int i = 0; i < block_size; i++) {
-
-    result += packet[i];
-
-  }
-
-  // binary addition of the bock
-  for (int i = block_size; i < packetLen; i += block_size) {
-
-    // stores next block
-    string next_block = "";
-
-    for (int j = i; j < i + block_size; j++) {
-
-      next_block += packet[j];
-
-    }
-
-    // stores the addition
-    string additions = "";
-    int sum = 0, carry = 0;
-
-    for (int k = block_size - 1; k >= 0; k--) {
-
-      sum += (next_block[k] - '0') + (result[k] - '0');
-      carry = sum / 2;
-
-      if (sum == 0) {
-
-        additions = '0' + additions;
-        sum = carry;
-
-      } else if (sum == 1) {
-
-        additions = '1' + additions;
-        sum = carry;
-
-      } else if (sum == 2) {
-
-        additions = '0' + additions;
-        sum = carry;
-
-      } else {
-
-        additions = '1' + additions;
-        sum = carry;
-
-      }
-
-    }
-
-    // after the addition check if carry is 1 then store the addition with carry result in final
-    string final = "";
-
-    if (carry == 1) {
-
-      for (int m = additions.length() - 1; m >= 0; m--) {
-
-        if (carry == 0) {
-
-          final = additions[m] + final;
-
-        } else if (((additions[m] - '0') + carry) == 0) {
-
-          final = '0' + final;
-          carry = 1;
-
-        } else {
-
-          final = '1' + final;
-          carry = 0;
-
-        }
-
-      }
-
-      result = final;
-
-    } else {
-
-      result = additions;
-
-    }
-
-  }
-
-  string onesComp = OnesCompelement(result);
-  int res = stoi(onesComp, 0, 2);
-
-  return res;
-
+uint32_t GetCrc32(char *data, unsigned int dataSize) {
+  boost::crc_32_type result;
+  result.process_bytes(data, dataSize);
+  return result.checksum();
 }
 
 struct hdr* getHeader(char* packet) {
@@ -230,7 +68,7 @@ struct hdr* getHeader(char* packet) {
 
 void printPacket(char* packet, int packetSize) {
   cout << "Seq: " << getHeader(packet)->seq << endl;
-  cout << "Checksum: " << getHeader(packet)->checkSum << endl;
+  cout << "CheckSum: " << getHeader(packet)->checkSum << endl;
   cout << "Ack: " << getHeader(packet)->ack << endl;
   cout << "Data Size: " << getHeader(packet)->dataSize << endl;
 
@@ -238,14 +76,6 @@ void printPacket(char* packet, int packetSize) {
     printf("%02X ", packet[i]);
   }
   cout << "\n";
-}
-
-void convertDataToBits(char* packet, unsigned int dataSize, char *bitStr2) {
-  for (int i = sizeof(struct hdr); i < dataSize; i++) {
-    char *bitStr = (char*)malloc(dataSize * sizeof(char));
-    str2bs(&packet[i], 8, bitStr);
-    strncat(bitStr2, bitStr, 8);
-  }
 }
 
 string printSlidingWindow(int start, int end) {
@@ -271,30 +101,22 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   int windowEnd = slidingWindowSize - 1;
 
   do {
-
 //    cout << "Would you like to have errors? 1 yes 2 no\n";
 //    cin >> errorInput;
 //
 //    if (errorInput == 1) {
+//      cout << "Would you like random errors? 1 yes 2 no\n";
+//      cin >> randInput;
 //
-//        cout << "Would you like random errors? 1 yes 2 no\n";
-//        cin >> randInput;
-//
-//        if (randInput == 1) {
-//
-//            int randNum = (rand()%packetSize);
-//
-//            errorPacket = randNum;
-//
-//        } else {
-//
-//            cout << "Enter the packet to error: \n";
-//            cin >> errorPacket;
-//
-//        }
-//
+//      if (randInput == 1) {
+//        int randNum = (rand()%packetSize);
+//        errorPacket = randNum;
+//      }
+//      else {
+//        cout << "Enter the packet to error: \n";
+//        cin >> errorPacket;
+//      }
 //    }
-
     cout << "Please enter the file name: ";
     cin >> filename;
     file = fopen(filename, "rb");
@@ -320,7 +142,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
   if (connectRes == -1) {
     cout << "Failed to connect to server\n";
-    //return 1;
+    return -1;
   }
 
   /* While we haven't reached the end of the file */
@@ -332,13 +154,10 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       /* If reading successful, push packet to front and increase the sequence */
       if (dataSize) {
         slidingWindow.push_front(packet);
-
-        //char *bitStr2 = (char*)malloc((dataSize + 1 ) * sizeof(char));
-        //convertDataToBits(packet, dataSize, bitStr2);
-        //int checkSum = createCheckSum(bitStr2, dataSize, 16);
+        uint32_t checkSum = GetCrc32(packet + sizeof(struct hdr), dataSize);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
-        //->checkSum = checkSum;
+        packetHeader->checkSum = checkSum;
         packetHeader->dataSize = dataSize + 1;
         packetHeader->ack = false;
         packetSeqCounter++;
@@ -348,7 +167,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* Send to server */
       cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
-      printPacket(*i, getHeader(*i)->dataSize);
+      //printPacket(*i, getHeader(*i)->dataSize);
       int sendRes = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
       if (sendRes == -1) {
         cout << "Failed to send packet to server!\r\n";
@@ -381,12 +200,9 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
         else {
           //TODO check for time outs
           cout << "Ack was false" << endl;
-          printPacket(packet, packetSize);
+          //printPacket(packet, packetSize);
         }
       }
-      /* Clean up pointer */
-      packet = nullptr;
-      delete packet;
     }
   }
   fclose(file);
