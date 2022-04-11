@@ -39,9 +39,7 @@ int main() {
       auto start = std::chrono::system_clock::now();
 
       for (int i = 0; i < 3; i++) {
-
-          system(("ping") + ip);
-
+        system(("ping " + ip).c_str());
       }
 
       auto end = std::chrono::system_clock::now();
