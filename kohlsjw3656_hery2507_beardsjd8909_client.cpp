@@ -332,12 +332,13 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       /* If reading successful, push packet to front and increase the sequence */
       if (dataSize) {
         slidingWindow.push_front(packet);
-        char *bitStr2 = (char*)malloc((dataSize + 1 ) * sizeof(char));
-        convertDataToBits(packet, dataSize, bitStr2);
-        int checkSum = createCheckSum(bitStr2, dataSize, 16);
+
+        //char *bitStr2 = (char*)malloc((dataSize + 1 ) * sizeof(char));
+        //convertDataToBits(packet, dataSize, bitStr2);
+        //int checkSum = createCheckSum(bitStr2, dataSize, 16);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
-        packetHeader->checkSum = checkSum;
+        //->checkSum = checkSum;
         packetHeader->dataSize = dataSize + 1;
         packetHeader->ack = false;
         packetSeqCounter++;

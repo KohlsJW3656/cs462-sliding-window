@@ -1,5 +1,8 @@
+BOOST_ROOT := boost_1_66_0
+BOOST_INC := ${BOOST_ROOT}/include
+
 run : menu.o client.o server.o
-	g++ menu.o client.o server.o -o menu
+	g++ -I$(BOOST_ROOT) menu.o client.o server.o -o menu
 
 menu.o: kohlsjw3656_hery2507_beardsjd8909_menu.cpp
 	g++ -g -c kohlsjw3656_hery2507_beardsjd8909_menu.cpp -o menu.o
