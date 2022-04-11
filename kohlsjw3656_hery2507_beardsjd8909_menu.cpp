@@ -3,6 +3,8 @@
 //
 
 #include <iostream>
+#include <chrono>
+#include <ctime>
 #include "kohlsjw3656_hery2507_beardsjd8909_client.h"
 #include "kohlsjw3656_hery2507_beardsjd8909_server.h"
 using namespace std;
@@ -27,12 +29,28 @@ int main() {
   if (timeoutType == 1) {
     cout << "Timeout Interval: ";
     cin >> timeoutInterval;
+
   }
   /* Dynamic */
   else {
     cout << "Multiplication factor for timeout: ";
     cin >> multiFactor;
-    /* (Ping ip 3 times divided by time) * multiFactor */
+
+      auto start = std::chrono::system_clock::now();
+
+      for (int i = 0; i < 3; i++) {
+
+          system(("ping") + ip);
+
+      }
+
+      auto end = std::chrono::system_clock::now();
+
+      std::chrono::duration<double> totalTime = end - start;
+      double t = totalTime.count();
+
+      double timeout = (t/3) * multiFactor;
+
   }
   cout << "Size of Sliding Window: ";
   cin >> slidingWindowSize;
