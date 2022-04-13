@@ -198,7 +198,7 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
   cout << "Number of retransmitted packets sent: " << retransmittedCounter << endl;
   cout << "Total elapsed time: " << elapsedTime << endl;
   cout << "Total throughput (Mbps): " << throughput / elapsedTime << endl;
-  cout << "Effective throughput: " << throughput;
+  cout << "Effective throughput: " << throughput << endl;
 
   fclose(file);
   close(sock);

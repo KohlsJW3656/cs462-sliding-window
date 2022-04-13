@@ -1,13 +1,11 @@
 Files: kohlsjw3656_hery2507_beardsjd8909_client.cpp
        kohlsjw3656_hery2507_beardsjd8909_client.h
-	   kohlsjw3656_hery2507_beardsjd8909_server.cpp
-	   kohlsjw3656_hery2507_beardsjd8909_server.h
-	   kohlsjw3656_hery2507_beardsjd8909_menu.cpp
-	   makefile
-	   .gitignore
+       kohlsjw3656_hery2507_beardsjd8909_server.cpp
+       kohlsjw3656_hery2507_beardsjd8909_server.h
+       kohlsjw3656_hery2507_beardsjd8909_menu.cpp
+       makefile
 	   
-Folders: .idea
-         boost
+Folders: boost
 
 
 To compile: 1. Enter the command terminal for the environment and go to where the files are stored 
