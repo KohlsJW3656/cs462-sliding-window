@@ -121,7 +121,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
     #endif
 
     /* If the packet fits within the sliding window */
-    if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
+    if (bytesReceived > sizeof(struct hdr) && getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
       cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       lastSeq = getHeaderServer(packet)->seq;
       slidingWindow.push_front(packet);
