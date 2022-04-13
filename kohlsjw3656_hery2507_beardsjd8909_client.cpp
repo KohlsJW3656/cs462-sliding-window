@@ -54,7 +54,7 @@ string printSlidingWindow(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int client(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize) {
+int client(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize, int errors) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
   char* packet;
@@ -63,31 +63,13 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
   int packetSeqCounter = 0;
   int retransmittedCounter = 0;
   int originalCounter = 0;
-  int errorInput;
-  int randInput;
-  int errorPacket;
   int windowStart = 0;
   int windowEnd = slidingWindowSize - 1;
   clock_t startTime;
   unsigned int throughput = 0;
+  srand (time(NULL));
 
   do {
-//    cout << "Would you like to have errors? 1 yes 2 no\n";
-//    cin >> errorInput;
-//
-//    if (errorInput == 1) {
-//      cout << "Would you like random errors? 1 yes 2 no\n";
-//      cin >> randInput;
-//
-//      if (randInput == 1) {
-//        int randNum = (rand()%packetSize);
-//        errorPacket = randNum;
-//      }
-//      else {
-//        cout << "Enter the packet to error: \n";
-//        cin >> errorPacket;
-//      }
-//    }
     cout << "Please enter the file name: ";
     cin >> filename;
     file = fopen(filename, "rb");
@@ -152,19 +134,31 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
       /* If the duration is greater than timeout interval, and we haven't acked the packet, resend */
       if (((double)(clock() - getHeader(*i)->sentTime) / (double) ((double) CLOCKS_PER_SEC / 1000)) > timeoutInterval && !getHeader(*i)->ack && getHeader(*i)->sent) {
         cout << "Packet " << getHeader(*i)->seq << " *****Timed Out *****" << endl;
-        cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
-        getHeader(*i)->sentTime = clock();
-        getHeader(*i)->retransmitted = true;
-        retransmittedCounter++;
-        send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+        /* if GBN, retransmit whole window */
+        if (protocol == 1) {
+          cout << "Retransmitting Window" << endl;
+          for (auto j = slidingWindow.rbegin(); j != slidingWindow.rend(); ++j) {
+            cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
+            getHeader(*j)->sentTime = clock();
+            getHeader(*j)->retransmitted = true;
+            retransmittedCounter++;
+            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
+          }
+        }
+        else {
+          cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
+          getHeader(*i)->sentTime = clock();
+          getHeader(*i)->retransmitted = true;
+          retransmittedCounter++;
+          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+        }
       }
     }
-
     /* Responses */
     while (!slidingWindow.empty()) {
-      /* Packet header responses */
-      packet = (char*) malloc(sizeof(struct hdr));
-      int bytesReceived = recv(sock, packet, sizeof(struct hdr), 0);
+      /* Packet responses */
+      packet = (char*) malloc(packetSize + 1);
+      int bytesReceived = recv(sock, packet, packetSize, 0);
       if (bytesReceived == -1) {
         cout << "There was an error getting response from server\r\n";
       }
@@ -177,6 +171,21 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
             windowStart++;
             windowEnd++;
             cout << printSlidingWindow(windowStart, windowEnd) << endl;
+          }
+          /* Received ack out of order */
+          else {
+            cout << printSlidingWindow(windowStart, windowEnd) << endl;
+            send(sock, slidingWindow.back(), getHeader(slidingWindow.back())->dataSize + sizeof(struct hdr), 0);
+          }
+        }
+        else {
+          for (auto j = slidingWindow.rbegin(); j != slidingWindow.rend(); ++j) {
+            cout << "Packet " << getHeader(*j)->seq << " *****Timed Out *****" << endl;
+            cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
+            getHeader(*j)->sentTime = clock();
+            getHeader(*j)->retransmitted = true;
+            retransmittedCounter++;
+            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
           }
         }
       }

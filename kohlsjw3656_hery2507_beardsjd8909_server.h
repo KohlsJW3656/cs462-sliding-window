@@ -6,6 +6,6 @@
 #define CS462_SLIDING_WINDOW_KOHLSJW3656_HERY2507_BEARDSJD8909_SERVER_H
 using namespace std;
 
-int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd);
+int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors);
 
 #endif //CS462_SLIDING_WINDOW_KOHLSJW3656_HERY2507_BEARDSJD8909_SERVER_H

@@ -55,7 +55,7 @@ string printSlidingWindowServer(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd) {
+int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors) {
   list<char*> slidingWindow;
   char* packet;
   int listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -68,6 +68,8 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   int lastSeq = 0;
   int retransmittedCounter = 0;
   int originalCounter = 0;
+  srand (time(NULL));
+  int flag = 0;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -115,12 +117,11 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
       printPacketServer(packet, packetSize);
     #endif
 
-    /* If the packet fits within the sequence */
-    if (bytesReceived > sizeof(struct hdr) && getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
+    /* If the packet fits within the sliding window */
+    if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
       cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       lastSeq = getHeaderServer(packet)->seq;
       slidingWindow.push_front(packet);
-      uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize);
       /* Count packet */
       if (getHeaderServer(packet)->retransmitted) {
         retransmittedCounter++;
@@ -128,26 +129,42 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
       else {
         originalCounter++;
       }
-      if (checkSum == getHeaderServer(packet)->checkSum) {
-        getHeaderServer(packet)->ack = true;
+      /* Calculate the Checksum */
+      uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize);
+      flag = (rand()% 20) + 1;
+      if (errors == 2 && flag == 4) {
+        cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
+        send(clientSocket, packet, packetSize, 0);
       }
-      if (getHeaderServer(packet)->ack) {
+      else if (checkSum == getHeaderServer(packet)->checkSum) {
+        getHeaderServer(packet)->ack = true;
         cout << "Checksum okay" << endl;
         cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
-        send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
-        windowStart++;
-        windowEnd++;
-        cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
-        // if (windowEnd > seqEnd) {
-        //   windowEnd = 0;
-        // }
+        flag = (rand()% 20) + 1;
+        if (errors == 2 && flag == 4) {
+          cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
+          getHeaderServer(packet)->ack = false;
+          send(clientSocket, packet, packetSize, 0);
+        }
+        else {
+          send(clientSocket, packet, packetSize, 0);
+          windowStart++;
+          windowEnd++;
+          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+        }
       }
       else {
         cout << "Checksum failed" << endl;
-        send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
+        send(clientSocket, packet, packetSize, 0);
         cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
       }
       slidingWindow.pop_back();
+    }
+    /* If we are using SR and got a packet out of order, we will send a negative ack back */
+    else if (protocol == 2) {
+      cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
+      cout << "Packet " << getHeaderServer(packet)->seq <<  " nack" << endl;
+      send(clientSocket, packet, packetSize, 0);
     }
   }
   cout << "Last packet seq# received: " << lastSeq << endl;
