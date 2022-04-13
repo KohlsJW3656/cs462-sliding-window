@@ -54,7 +54,7 @@ string printSlidingWindow(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
+int client(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
   char* packet;

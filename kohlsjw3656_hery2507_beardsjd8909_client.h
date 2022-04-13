@@ -7,6 +7,6 @@
 using namespace std;
 
 //TODO Change to CPP
-int client(string ip, int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType);
+int client(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize);
 
 #endif //CS462_SLIDING_WINDOW_KOHLSJW3656_HERY2507_BEARDSJD8909_CLIENT_H

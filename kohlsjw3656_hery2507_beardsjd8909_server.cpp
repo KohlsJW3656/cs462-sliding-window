@@ -55,7 +55,7 @@ string printSlidingWindowServer(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int server(int port, int protocol, int packetSize, int timeoutType, int timeoutInterval, int multiFactor, int slidingWindowSize, int seqEnd, int userType) {
+int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd) {
   list<char*> slidingWindow;
   char* packet;
   int listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -78,6 +78,7 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
   bind(listening, (sockaddr*)&hint, sizeof(hint));
 
   listen(listening, SOMAXCONN);
+  cout << "Server running on port " << port << endl;
 
   /* Wait for a connection */
   sockaddr_in client;
