@@ -2,7 +2,7 @@
 // Created by Jonas Kohls on 03/11/2022.
 //
 
-#define DEBUG
+//#define DEBUG
 
 #include <bits/stdc++.h>
 #include <iostream>
@@ -15,50 +15,15 @@
 #include "boost/crc.hpp"
 using namespace std;
 
-typedef u_char Sequence;
-typedef char Msg;
-typedef char Event;
-
-struct Semaphore {
-  int mutex;
-  int rcount; //number of readers
-  int rwait; //number of readers waiting
-  int wrt; //boolean to check if write is in progress
-};
-
 struct hdr {
   int seq;
   uint32_t checkSum;
   bool ack;
+  bool sent;
+  bool retransmitted;
+  clock_t sentTime;
   unsigned int dataSize;
 };
-
-typedef struct {
-  Sequence Num; //the sequence number for the frame
-  Sequence AckNum; //the acknowlege number for the received frame
-  u_char Flags; //the flags used
-} Header;
-
-typedef struct {
-  //SENDER
-  Sequence prevACK; // last ack received
-  Sequence prevFrame; // last frame received
-  Header header; // pre-initialized header
-  Semaphore sendWindowNotFull; //semaphore to see if send window is full
-
-  struct send_slot {
-    Event timeout;
-    Msg  msg;
-  };
-
-  //RECEIVER
-  Sequence nextFrame; //sequence number for next frame expected
-
-  struct receiver_slot {
-    int received; //checks if the received message is valid
-    Msg msg;
-  };
-} State;
 
 uint32_t GetCrc32Server(char *data, unsigned int dataSize) {
   boost::crc_32_type result;
@@ -100,6 +65,9 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
   }
   int windowStart = 0;
   int windowEnd = slidingWindowSize - 1;
+  int lastSeq = 0;
+  int retransmittedCounter = 0;
+  int originalCounter = 0;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -136,44 +104,55 @@ int server(int port, int protocol, int packetSize, int timeoutType, int timeoutI
 
   while (true) {
     /* While we can receive packets */
-    while (slidingWindow.size() < slidingWindowSize) {
-      packet = (char*) malloc(packetSize + 1);
-      int bytesReceived = recv(clientSocket, packet, packetSize, 0);
-      if (bytesReceived == -1) {
-        cout << "Error receiving packets" << endl;
-        break;
+    packet = (char*) malloc(packetSize + 1);
+    int bytesReceived = recv(clientSocket, packet, packetSize, 0);
+    if (bytesReceived == -1 || bytesReceived == 0) {
+      break;
+    }
+    #ifdef DEBUG
+      cout << "Received: " << bytesReceived << endl;
+      printPacketServer(packet, packetSize);
+    #endif
+
+    /* If the packet fits within the sequence */
+    if (bytesReceived > sizeof(struct hdr) && getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
+      cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
+      lastSeq = getHeaderServer(packet)->seq;
+      slidingWindow.push_front(packet);
+      uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize);
+      /* Count packet */
+      if (getHeaderServer(packet)->retransmitted) {
+        retransmittedCounter++;
       }
-      /* If the packet fits within the sequence */
-      if (bytesReceived > sizeof(struct hdr) && getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
-        cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
-        slidingWindow.push_front(packet);
-        uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize - 1);
-        if (checkSum == getHeaderServer(packet)->checkSum) {
-          getHeaderServer(packet)->ack = true;
-        }
-        if (getHeaderServer(packet)->ack) {
-          cout << "Checksum okay" << endl;
-          cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
-          send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
-          windowStart++;
-          windowEnd++;
-          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
-          // if (windowEnd > seqEnd) {
-          //   windowEnd = 0;
-          // }
-        }
-        else {
-          cout << "Checksum failed" << endl;
-          send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
-          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
-        }
-        slidingWindow.pop_back();
-        packet = nullptr;
-        delete packet;
+      else {
+        originalCounter++;
       }
+      if (checkSum == getHeaderServer(packet)->checkSum) {
+        getHeaderServer(packet)->ack = true;
+      }
+      if (getHeaderServer(packet)->ack) {
+        cout << "Checksum okay" << endl;
+        cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
+        send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
+        windowStart++;
+        windowEnd++;
+        cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+        // if (windowEnd > seqEnd) {
+        //   windowEnd = 0;
+        // }
+      }
+      else {
+        cout << "Checksum failed" << endl;
+        send(clientSocket, getHeaderServer(packet), sizeof(struct hdr), 0);
+        cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+      }
+      slidingWindow.pop_back();
     }
   }
-  // Close the socket
+  cout << "Last packet seq# received: " << lastSeq << endl;
+  cout << "Number of original packets received: " << originalCounter << endl;
+  cout << "Number of retransmitted packets received: " << retransmittedCounter << endl;
+  /* Close the socket */
   close(clientSocket);
   return 0;
 }

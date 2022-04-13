@@ -1,3 +1,6 @@
+
+//#define DEBUG
+
 #include <iostream>
 #include <sys/types.h>
 #include <unistd.h>
@@ -11,50 +14,15 @@
 
 using namespace std;
 
-typedef u_char Sequence;
-typedef char Msg;
-typedef char Event;
-
-struct Semaphore {
-  int mutex;
-  int rcount; //number of readers
-  int rwait; //number of readers waiting
-  int wrt; //boolean to check if write is in progress
-};
-
 struct hdr {
   int seq;
   uint32_t checkSum;
   bool ack;
+  bool sent;
+  bool retransmitted;
+  clock_t sentTime;
   unsigned int dataSize;
 };
-
-typedef struct {
-  Sequence Num; //the sequence number for the frame
-  Sequence AckNum; //the acknowlege number for the received frame
-  u_char Flags; //the flags used
-} Header;
-
-typedef struct {
-  //SENDER
-  Sequence prevACK; // last ack received
-  Sequence prevFrame; // last frame received
-  Header header; // pre-initialized header
-  Semaphore sendWindowNotFull; //semaphore to see if send window is full
-
-  struct send_slot {
-    Event timeout;
-    Msg  msg;
-  };
-
-  //RECEIVER
-  Sequence nextFrame; //sequence number for next frame expected
-
-  struct receiver_slot {
-    int received; //checks if the received message is valid
-    Msg msg;
-  };
-} State;
 
 uint32_t GetCrc32(char *data, unsigned int dataSize) {
   boost::crc_32_type result;
@@ -93,12 +61,15 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
   list<char*> slidingWindow;
   string userInput;
   int packetSeqCounter = 0;
-  int packetLoopCounter = 0;
+  int retransmittedCounter = 0;
+  int originalCounter = 0;
   int errorInput;
   int randInput;
   int errorPacket;
   int windowStart = 0;
   int windowEnd = slidingWindowSize - 1;
+  clock_t startTime;
+  unsigned int throughput = 0;
 
   do {
 //    cout << "Would you like to have errors? 1 yes 2 no\n";
@@ -144,6 +115,7 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
     cout << "Failed to connect to server\n";
     return -1;
   }
+  startTime = clock();
 
   /* While we haven't reached the end of the file */
   while(!feof(file)) {
@@ -153,30 +125,43 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
       unsigned int dataSize = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
       /* If reading successful, push packet to front and increase the sequence */
       if (dataSize) {
+        throughput += dataSize + + sizeof(struct hdr);
         slidingWindow.push_front(packet);
         uint32_t checkSum = GetCrc32(packet + sizeof(struct hdr), dataSize);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
         packetHeader->checkSum = checkSum;
-        packetHeader->dataSize = dataSize + 1;
+        packetHeader->dataSize = dataSize;
         packetHeader->ack = false;
         packetSeqCounter++;
       }
     }
     /* Send all packets in our slidingWindow */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
-      /* Send to server */
-      cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
-      //printPacket(*i, getHeader(*i)->dataSize);
-      int sendRes = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-      if (sendRes == -1) {
-        cout << "Failed to send packet to server!\r\n";
-        break;
+      /* If we haven't sent the packet and haven't acked */
+      if (!getHeader(*i)->sent) {
+        cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
+        getHeader(*i)->sent = true;
+        getHeader(*i)->sentTime = clock();
+        originalCounter++;
+        #ifdef DEBUG
+          printPacket(*i, getHeader(*i)->dataSize);
+        #endif
+        send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+      }
+      /* If the duration is greater than timeout interval, and we haven't acked the packet, resend */
+      if (((double)(clock() - getHeader(*i)->sentTime) / (double) ((double) CLOCKS_PER_SEC / 1000)) > timeoutInterval && !getHeader(*i)->ack && getHeader(*i)->sent) {
+        cout << "Packet " << getHeader(*i)->seq << " *****Timed Out *****" << endl;
+        cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
+        getHeader(*i)->sentTime = clock();
+        getHeader(*i)->retransmitted = true;
+        retransmittedCounter++;
+        send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
       }
     }
 
     /* Responses */
-    for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+    while (!slidingWindow.empty()) {
       /* Packet header responses */
       packet = (char*) malloc(sizeof(struct hdr));
       int bytesReceived = recv(sock, packet, sizeof(struct hdr), 0);
@@ -193,39 +178,20 @@ int client(string ip, int port, int protocol, int packetSize, int timeoutType, i
             windowEnd++;
             cout << printSlidingWindow(windowStart, windowEnd) << endl;
           }
-          else {
-            //TODO put packet on another list of acked packets
-          }
-        }
-        else {
-          //TODO check for time outs
-          cout << "Ack was false" << endl;
-          //printPacket(packet, packetSize);
         }
       }
     }
   }
-  fclose(file);
+  double elapsedTime = (double)(clock() - startTime) / (double) CLOCKS_PER_SEC;
 
-//  if (1/*PACKET IS MISSING*/) {
-//    if (protocol == 2) {
-//      int previousPacketReceived = 0/*the previous packet received in order*/;
-//      int nextPacketExpected = 0/*the next packet expected given the last packet received*/;
-//      if (nextPacketExpected - previousPacketReceived != 1) {
-//        int missingPackets = nextPacketExpected - previousPacketReceived;
-//        for (int i = 1; i < missingPackets - 2; i++) {
-//          int currentMissingNum = previousPacketReceived + i;
-//          //send the missing packet previousPacketReceived + i
-//        }
-//
-//      }
-//      else {
-//        //send the missing packet
-//      }
-//    }
-//  }
-//  while(true);
-  //	Close the socket
+  cout << "Session successfully terminated" << endl << endl;
+  cout << "Number of original packets sent: " << originalCounter << endl;
+  cout << "Number of retransmitted packets sent: " << retransmittedCounter << endl;
+  cout << "Total elapsed time: " << elapsedTime << endl;
+  cout << "Total throughput (Mbps): " << throughput / elapsedTime << endl;
+  cout << "Effective throughput: " << throughput;
+
+  fclose(file);
   close(sock);
   return 0;
 }
