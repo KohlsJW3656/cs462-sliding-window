@@ -70,6 +70,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   int originalCounter = 0;
   srand (time(NULL));
   int flag = 0;
+  FILE *file;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -104,6 +105,8 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
 
   /* Close listening socket */
   close(listening);
+
+  file = fopen("Server-Out", "w");
 
   while (true) {
     /* While we can receive packets */
@@ -151,6 +154,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
           windowStart++;
           windowEnd++;
           cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+          fwrite(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize, 1, file);
         }
       }
       else {
@@ -170,7 +174,9 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   cout << "Last packet seq# received: " << lastSeq << endl;
   cout << "Number of original packets received: " << originalCounter << endl;
   cout << "Number of retransmitted packets received: " << retransmittedCounter << endl;
+
   /* Close the socket */
   close(clientSocket);
+  fclose(file);
   return 0;
 }
