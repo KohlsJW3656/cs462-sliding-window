@@ -54,7 +54,7 @@ string printSlidingWindow(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int client(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize, int errors) {
+int sender(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize, int seqEnd, int errors) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
   char* packet;
@@ -79,19 +79,20 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
   }
   while (!file);
 
-  //	Create a socket
+  /* Create a socket */
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock == -1) {
     cout << "Failed to create socket\n";
     return 1;
   }
 
+  /* Bind the ip address and port to a socket */
   sockaddr_in hint;
   hint.sin_family = AF_INET;
   hint.sin_port = htons(port);
   inet_pton(AF_INET, ip.c_str(), &hint.sin_addr);
 
-  //	Connect to the server on the socket
+  /* Connect to the server on the socket */
   int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
   if (connectRes == -1) {
     cout << "Failed to connect to server\n";
@@ -111,6 +112,9 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
         slidingWindow.push_front(packet);
         uint32_t checkSum = GetCrc32(packet + sizeof(struct hdr), dataSize);
         auto *packetHeader = (struct hdr *) packet;
+        if (packetSeqCounter == seqEnd) {
+          //packetSeqCounter = 0;
+        }
         packetHeader->seq = packetSeqCounter;
         packetHeader->checkSum = checkSum;
         packetHeader->dataSize = dataSize;
@@ -118,7 +122,7 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
         packetSeqCounter++;
       }
       else {
-	break;
+        break;
       }
     }
     /* Send all packets in our slidingWindow */
@@ -163,11 +167,12 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
       int bytesReceived = 0;
       packet = (char*) malloc(packetSize + 1);
       bytesReceived = recv(sock, packet, packetSize, 0);
+      /* Continue to read in bytes until we get the full packet */
       while (bytesReceived != packetSize) {
         bytesReceived += recv(sock, packet + bytesReceived, packetSize - bytesReceived, 0);
         if (bytesReceived == -1 || bytesReceived == 0) {
-	  break;
-	}
+          break;
+        }
       }
 
       if (bytesReceived == -1 || bytesReceived == 0) {

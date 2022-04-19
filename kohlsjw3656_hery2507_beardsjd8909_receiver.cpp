@@ -55,7 +55,7 @@ string printSlidingWindowServer(int start, int end) {
   return slidingWindow += to_string(end) + "]";
 }
 
-int server(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors) {
+int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors) {
   list<char*> slidingWindow;
   char* packet;
   int listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -81,7 +81,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   bind(listening, (sockaddr*)&hint, sizeof(hint));
 
   listen(listening, SOMAXCONN);
-  cout << "Server running on port " << port << endl;
+  cout << "Receiver running on port " << port << endl;
 
   /* Wait for a connection */
   sockaddr_in client;
@@ -102,22 +102,22 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
     inet_ntop(AF_INET, &client.sin_addr, host, NI_MAXHOST);
     cout << host << " connected on port " << ntohs(client.sin_port) << endl;
   }
-
   /* Close listening socket */
   close(listening);
 
   file = fopen("/tmp/kohls-out", "w");
 
   while (true) {
-    /* While we can receive packets */
     packet = (char*) malloc(packetSize + 1);
     int bytesReceived = 0;
     bytesReceived = recv(clientSocket, packet, packetSize, 0);
+
+    /* Continue to read in bytes until we get the full packet */
     while (bytesReceived != getHeaderServer(packet)->dataSize + sizeof(struct hdr)) {
-    bytesReceived += recv(clientSocket, packet + bytesReceived, getHeaderServer(packet)->dataSize + sizeof(hdr) - bytesReceived, 0);
-	if (bytesReceived == -1 || bytesReceived == 0) {
-		break;
-	}
+      bytesReceived += recv(clientSocket, packet + bytesReceived, getHeaderServer(packet)->dataSize + sizeof(hdr) - bytesReceived, 0);
+      if (bytesReceived == -1 || bytesReceived == 0) {
+        break;
+      }
     }
     if (bytesReceived == -1 || bytesReceived == 0) {
       break;
@@ -128,7 +128,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
     #endif
 
     /* If the packet fits within the sliding window */
-    if (bytesReceived > sizeof(struct hdr) && getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
+    if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
       cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       lastSeq = getHeaderServer(packet)->seq;
       slidingWindow.push_front(packet);
@@ -182,8 +182,7 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   cout << "Number of original packets received: " << originalCounter << endl;
   cout << "Number of retransmitted packets received: " << retransmittedCounter << endl;
 
-  /* Close the socket */
-  close(clientSocket);
   fclose(file);
+  close(clientSocket);
   return 0;
 }

@@ -4,8 +4,8 @@
 
 #include <iostream>
 #include <chrono>
-#include "kohlsjw3656_hery2507_beardsjd8909_client.h"
-#include "kohlsjw3656_hery2507_beardsjd8909_server.h"
+#include "kohlsjw3656_hery2507_beardsjd8909_sender.h"
+#include "kohlsjw3656_hery2507_beardsjd8909_receiver.h"
 using namespace std;
 
 int main() {
@@ -13,11 +13,11 @@ int main() {
   double timeoutInterval;
   int port, protocol, packetSize, timeoutType, multiFactor, slidingWindowSize, seqEnd, userType, errors;
 
-  cout << "1. Client" << endl << "2. Server\n";
+  cout << "1. Sender" << endl << "2. Receiver\n";
   cout << "Please select an option: ";
   cin >> userType;
 
-  /* Client */
+  /* Sender */
   if (userType == 1) {
     cout << "IP address: ";
     cin >> ip;
@@ -26,6 +26,15 @@ int main() {
     cout << "1. GBN" << endl << "2. SR" << endl;
     cout << "Please select an option: ";
     cin >> protocol;
+    cout << "Size of Sliding Window: ";
+    cin >> slidingWindowSize;
+    cout << "End sequence number: ";
+    cin >> seqEnd;
+    while (slidingWindowSize > (seqEnd + 1) / 2) {
+      cout << "Invalid max sequence" << endl;
+      cout << "End sequence number: ";
+      cin >> seqEnd;
+    }
     cout << "Size of packet: ";
     cin >> packetSize;
     cout << "1. Static Timeout interval" << endl << "2. Dynamic Timeout interval" << endl;
@@ -47,13 +56,12 @@ int main() {
       double t = totalTime.count();
       timeoutInterval = (t/3) * multiFactor;
     }
-    cout << "Size of Sliding Window: ";
-    cin >> slidingWindowSize;
     cout << "1. No Errors" << endl << "2. Random Errors" << endl << "3. User Specified" << endl;
     cout << "Please select an option: ";
     cin >> errors;
-    client(ip, port, protocol, packetSize, timeoutInterval, slidingWindowSize, errors);
+    sender(ip, port, protocol, packetSize, timeoutInterval, slidingWindowSize, seqEnd, errors);
   }
+  /* Receiver */
   else {
     cout << "Port: ";
     cin >> port;
@@ -67,13 +75,18 @@ int main() {
     else {
       slidingWindowSize = 1;
     }
-    cout << "Size of packet: ";
-    cin >> packetSize;
     cout << "End sequence number: ";
     cin >> seqEnd;
+    while (slidingWindowSize > (seqEnd + 1) / 2) {
+      cout << "Invalid max sequence" << endl;
+      cout << "End sequence number: ";
+      cin >> seqEnd;
+    }
+    cout << "Size of packet: ";
+    cin >> packetSize;
     cout << "1. No Errors" << endl << "2. Random Errors" << endl << "3. User Specified" << endl;
     cout << "Please select an option: ";
     cin >> errors;
-    server(port, protocol, packetSize, slidingWindowSize, seqEnd, errors);
+    receiver(port, protocol, packetSize, slidingWindowSize, seqEnd, errors);
   }
 }
