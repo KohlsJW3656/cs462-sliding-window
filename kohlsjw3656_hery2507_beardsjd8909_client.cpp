@@ -117,6 +117,9 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
         packetHeader->ack = false;
         packetSeqCounter++;
       }
+      else {
+	break;
+      }
     }
     /* Send all packets in our slidingWindow */
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
@@ -157,10 +160,18 @@ int client(string ip, int port, int protocol, int packetSize, double timeoutInte
     /* Responses */
     while (!slidingWindow.empty()) {
       /* Packet responses */
+      int bytesReceived = 0;
       packet = (char*) malloc(packetSize + 1);
-      int bytesReceived = recv(sock, packet, packetSize, 0);
-      if (bytesReceived == -1) {
-        cout << "There was an error getting response from server\r\n";
+      bytesReceived = recv(sock, packet, packetSize, 0);
+      while (bytesReceived != packetSize) {
+        bytesReceived += recv(sock, packet + bytesReceived, packetSize - bytesReceived, 0);
+        if (bytesReceived == -1 || bytesReceived == 0) {
+	  break;
+	}
+      }
+
+      if (bytesReceived == -1 || bytesReceived == 0) {
+        break;
       }
       else {
         if (getHeader(packet)->ack) {

@@ -106,12 +106,19 @@ int server(int port, int protocol, int packetSize, int slidingWindowSize, int se
   /* Close listening socket */
   close(listening);
 
-  file = fopen("Server-Out", "w");
+  file = fopen("/tmp/kohls-out", "w");
 
   while (true) {
     /* While we can receive packets */
     packet = (char*) malloc(packetSize + 1);
-    int bytesReceived = recv(clientSocket, packet, packetSize, 0);
+    int bytesReceived = 0;
+    bytesReceived = recv(clientSocket, packet, packetSize, 0);
+    while (bytesReceived != getHeaderServer(packet)->dataSize + sizeof(struct hdr)) {
+    bytesReceived += recv(clientSocket, packet + bytesReceived, getHeaderServer(packet)->dataSize + sizeof(hdr) - bytesReceived, 0);
+	if (bytesReceived == -1 || bytesReceived == 0) {
+		break;
+	}
+    }
     if (bytesReceived == -1 || bytesReceived == 0) {
       break;
     }
