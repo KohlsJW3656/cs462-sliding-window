@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <list>
+#include <iomanip>
 #include "boost/crc.hpp"
 
 using namespace std;
@@ -124,7 +125,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
       unsigned int dataSize = fread(packet + sizeof(struct hdr), 1, packetSize - sizeof(struct hdr), file);
       /* If reading successful, push packet to front and increase the sequence */
       if (dataSize) {
-        throughput += dataSize;
+        throughput += dataSize + sizeof(struct hdr);
         slidingWindow.push_front(packet);
         uint32_t checkSum = GetCrc32(packet + sizeof(struct hdr), dataSize);
         auto *packetHeader = (struct hdr *) packet;
@@ -254,8 +255,8 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   cout << "Session successfully terminated" << endl << endl;
   cout << "Number of original packets sent: " << originalCounter << endl;
   cout << "Number of retransmitted packets sent: " << retransmittedCounter << endl;
-  cout << "Total elapsed time: " << elapsedTime << endl;
-  cout << "Total throughput (Mbps): " << throughput / elapsedTime << endl;
+  cout << "Total elapsed time: " << elapsedTime << "s" << endl;
+  cout << fixed << setprecision(4) << "Total throughput (Mbps): " << throughput / elapsedTime << "Mbps" << endl;
   cout << "Effective throughput: " << throughput << endl;
 
   fclose(file);
