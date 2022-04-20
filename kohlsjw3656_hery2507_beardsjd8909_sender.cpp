@@ -260,9 +260,9 @@ if (false) {
   cout << "Session successfully terminated" << endl << endl;
   cout << "Number of original packets sent: " << originalCounter << endl;
   cout << "Number of retransmitted packets sent: " << retransmittedCounter << endl;
-  cout << fixed << setprecision(3) << "Total elapsed time: " << duration.count() << "s" << endl;
-  cout << "Total throughput (Mbps): " << throughput / duration.count() << "Mbps" << endl;
-  cout << "Effective throughput: " << throughput << endl;
+  cout << fixed << setprecision(3) << "Total elapsed time: " << duration.count() << endl;
+  cout << "Total throughput (Mbps): " << (((double)throughput / 1000000) * 8) / duration.count() << endl;
+  cout << "Effective throughput: " << ((double)throughput / 1000000) * 8 << "Mb" << endl;
 
   fclose(file);
   close(sock);
