@@ -1,7 +1,7 @@
-Files: kohlsjw3656_hery2507_beardsjd8909_client.cpp
-       kohlsjw3656_hery2507_beardsjd8909_client.h
-       kohlsjw3656_hery2507_beardsjd8909_server.cpp
-       kohlsjw3656_hery2507_beardsjd8909_server.h
+Files: kohlsjw3656_hery2507_beardsjd8909_sender.cpp
+       kohlsjw3656_hery2507_beardsjd8909_sender.h
+       kohlsjw3656_hery2507_beardsjd8909_receiver.cpp
+       kohlsjw3656_hery2507_beardsjd8909_receiver.h
        kohlsjw3656_hery2507_beardsjd8909_menu.cpp
        makefile
 	   
@@ -14,10 +14,10 @@ To compile: 1. Enter the command terminal for the environment and go to where th
 To clean: 1. Enter the command terminal for the environment and go to where the files are stored 
 		  2. Type “make clean” into the terminal
 			
-To run client: 1. Type “./menu” into the terminal
-			   2. When prompted for client or server select 1
+To run sender: 1. Type “./menu” into the terminal
+			   2. When prompted for sender or receiver select 1
 			   3. Fill out the remaining prompts
 			   
-To run server: 1. Type “./menu” into the terminal
-			   2. When prompted for client or server select 2
+To run receiver: 1. Type “./menu” into the terminal
+			   2. When prompted for sender or receiver select 2
 			   3. Fill out the remaining prompts
