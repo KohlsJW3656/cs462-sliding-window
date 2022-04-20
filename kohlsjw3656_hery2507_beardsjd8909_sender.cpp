@@ -17,11 +17,11 @@ using namespace std;
 
 struct hdr {
   int seq;
+  unsigned int dataSize;
   uint32_t checkSum;
   bool ack;
   bool sent;
   bool retransmitted;
-  unsigned int dataSize;
 };
 
 uint32_t GetCrc32(char *data, unsigned int dataSize) {
@@ -43,7 +43,7 @@ void printPacket(char* packet, int packetSize) {
   for (int i = sizeof(struct hdr); i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
-  cout << "\n";
+  cout << endl;
 }
 
 string printSlidingWindow(bool wrappingMode, int windowStart, int windowEnd, int seqEnd) {
@@ -92,7 +92,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
     cin >> filename;
     file = fopen(filename, "rb");
     if (!file) {
-      cout << "Invalid filename\n";
+      cout << "Invalid filename" << endl;
     }
   }
   while (!file);
@@ -103,7 +103,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   /* Create a socket */
   int sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock == -1) {
-    cout << "Failed to create socket\n";
+    cout << "Failed to create socket" << endl;
     return 1;
   }
 
@@ -116,7 +116,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   /* Connect to the server on the socket */
   int connectRes = connect(sock, (sockaddr*)&hint, sizeof(hint));
   if (connectRes == -1) {
-    cout << "Failed to connect to server\n";
+    cout << "Failed to connect to server" << endl;
     return -1;
   }
 
@@ -133,9 +133,11 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
         uint32_t checkSum = GetCrc32(packet + sizeof(struct hdr), dataSize);
         auto *packetHeader = (struct hdr *) packet;
         packetHeader->seq = packetSeqCounter;
-        packetHeader->checkSum = checkSum;
         packetHeader->dataSize = dataSize;
+        packetHeader->checkSum = checkSum;
         packetHeader->ack = false;
+        packetHeader->sent = false;
+        packetHeader->retransmitted = false;
         packetSeqCounter++;
         if (packetSeqCounter == seqEnd + 1) {
           packetSeqCounter = 0;

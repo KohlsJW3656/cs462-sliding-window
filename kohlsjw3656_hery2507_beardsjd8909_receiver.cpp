@@ -17,11 +17,11 @@ using namespace std;
 
 struct hdr {
   int seq;
+  unsigned int dataSize;
   uint32_t checkSum;
   bool ack;
   bool sent;
   bool retransmitted;
-  unsigned int dataSize;
 };
 
 uint32_t GetCrc32Server(char *data, unsigned int dataSize) {
@@ -43,7 +43,7 @@ void printPacketServer(char* packet, int packetSize) {
   for (int i = sizeof(struct hdr); i < packetSize; i++) {
     printf("%02X ", packet[i]);
   }
-  cout << "\n";
+  cout << endl;
 }
 
 string printSlidingWindowServer(int wrappingMode, int windowStart, int windowEnd, int seqEnd) {
