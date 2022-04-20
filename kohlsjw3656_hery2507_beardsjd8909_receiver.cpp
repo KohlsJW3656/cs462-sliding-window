@@ -21,7 +21,6 @@ struct hdr {
   bool ack;
   bool sent;
   bool retransmitted;
-  clock_t sentTime;
   unsigned int dataSize;
 };
 

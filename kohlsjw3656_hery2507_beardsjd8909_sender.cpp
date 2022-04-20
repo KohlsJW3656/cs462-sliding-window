@@ -2,7 +2,6 @@
 //#define DEBUG
 
 #include <iostream>
-#include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -11,6 +10,7 @@
 #include <cstdlib>
 #include <list>
 #include <iomanip>
+#include <chrono>
 #include "boost/crc.hpp"
 
 using namespace std;
@@ -21,7 +21,6 @@ struct hdr {
   bool ack;
   bool sent;
   bool retransmitted;
-  clock_t sentTime;
   unsigned int dataSize;
 };
 
@@ -71,6 +70,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   FILE *file;
   char* packet;
   list<char*> slidingWindow;
+  list<std::chrono::system_clock> timeoutClocks;
   string userInput;
   int packetSeqCounter = 0;
   int retransmittedCounter = 0;
@@ -78,10 +78,14 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   int windowStart = 0;
   int windowEnd = slidingWindowSize - 1;
   int displayOutput;
-  clock_t startTime;
   unsigned int throughput = 0;
   bool wrappingMode = false;
   srand (time(NULL));
+  using clock = std::chrono::system_clock;
+  //using ms = std::chrono::duration<double, std::milli>;
+  using sec = std::chrono::duration<double>;
+
+  const auto startTime = clock::now();
 
   do {
     cout << "Please enter the file name: ";
@@ -115,7 +119,6 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
     cout << "Failed to connect to server\n";
     return -1;
   }
-  startTime = clock();
 
   /* While we haven't reached the end of the file */
   while(!feof(file)) {
@@ -150,7 +153,8 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
           cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
         }
         getHeader(*i)->sent = true;
-        getHeader(*i)->sentTime = clock();
+
+        //TODO timeoutClocks.push_back(clock::now());
         originalCounter++;
         #ifdef DEBUG
           printPacket(*i, getHeader(*i)->dataSize);
@@ -158,7 +162,8 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
         send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
       }
       /* If the duration is greater than timeout interval, and we haven't acked the packet, resend */
-      if (((double)(clock() - getHeader(*i)->sentTime) / (double) ((double) CLOCKS_PER_SEC / 1000)) > timeoutInterval && !getHeader(*i)->ack && getHeader(*i)->sent) {
+//TODO      if (((double)(clock() - getHeader(*i)->sentTime) / (double) ((double) CLOCKS_PER_SEC / 1000)) > timeoutInterval && !getHeader(*i)->ack && getHeader(*i)->sent) {
+if (false) {
         if (displayOutput == 1) {
           cout << "Packet " << getHeader(*i)->seq << " *****Timed Out *****" << endl;
         }
@@ -171,7 +176,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
             if (displayOutput == 1) {
               cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
             }
-            getHeader(*j)->sentTime = clock();
+            //TODO getHeader(*j)->sentTime = clock();
             getHeader(*j)->retransmitted = true;
             retransmittedCounter++;
             send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
@@ -181,7 +186,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
           if (displayOutput == 1) {
             cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
           }
-          getHeader(*i)->sentTime = clock();
+          //TODO getHeader(*i)->sentTime = clock();
           getHeader(*i)->retransmitted = true;
           retransmittedCounter++;
           send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
@@ -241,7 +246,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
               cout << "Packet " << getHeader(*j)->seq << " *****Timed Out *****" << endl;
               cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
             }
-            getHeader(*j)->sentTime = clock();
+            //TODO getHeader(*j)->sentTime = clock();
             getHeader(*j)->retransmitted = true;
             retransmittedCounter++;
             send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
@@ -250,13 +255,13 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
       }
     }
   }
-  double elapsedTime = (double)(clock() - startTime) / (double) CLOCKS_PER_SEC;
+  const sec duration = clock::now() - startTime;
 
   cout << "Session successfully terminated" << endl << endl;
   cout << "Number of original packets sent: " << originalCounter << endl;
   cout << "Number of retransmitted packets sent: " << retransmittedCounter << endl;
-  cout << "Total elapsed time: " << elapsedTime << "s" << endl;
-  cout << fixed << setprecision(4) << "Total throughput (Mbps): " << throughput / elapsedTime << "Mbps" << endl;
+  cout << fixed << setprecision(3) << "Total elapsed time: " << duration.count() << "s" << endl;
+  cout << "Total throughput (Mbps): " << throughput / duration.count() << "Mbps" << endl;
   cout << "Effective throughput: " << throughput << endl;
 
   fclose(file);
