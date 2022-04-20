@@ -47,12 +47,33 @@ void printPacketServer(char* packet, int packetSize) {
   cout << "\n";
 }
 
-string printSlidingWindowServer(int start, int end) {
+string printSlidingWindowServer(int wrappingMode, int windowStart, int windowEnd, int seqEnd) {
   string slidingWindow = "Current window = [";
-  for (int i = start; i < end; i++) {
-    slidingWindow+= to_string(i) + ", ";
+  /* If the window is not wrapping */
+  if (!wrappingMode) {
+    for (int i = windowStart; i < windowEnd; i++) {
+      slidingWindow+= to_string(i) + ", ";
+    }
   }
-  return slidingWindow += to_string(end) + "]";
+  else {
+    for (int i = windowStart; i <= seqEnd; i++) {
+      slidingWindow+= to_string(i) + ", ";
+    }
+    for (int j = 0; j < windowEnd; j++) {
+      slidingWindow+= to_string(j) + ", ";
+    }
+  }
+  return slidingWindow += to_string(windowEnd) + "]";
+}
+
+bool packetCanFit(int wrappingMode, int packetSeq, int windowStart, int windowEnd) {
+  /* If the window is not wrapping */
+  if (!wrappingMode) {
+    return packetSeq >= windowStart && packetSeq <= windowEnd;
+  }
+  else {
+    return packetSeq >= windowStart || packetSeq <= windowEnd;
+  }
 }
 
 int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors) {
@@ -70,7 +91,13 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
   int originalCounter = 0;
   srand (time(NULL));
   int flag = 0;
+  bool wrappingMode = false;
   FILE *file;
+  int displayOutput;
+
+  cout << "1. Display Output" << endl << "2. No output (for large files)" << endl;
+  cout << "Please select an option: ";
+  cin >> displayOutput;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -128,8 +155,10 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
     #endif
 
     /* If the packet fits within the sliding window */
-    if (getHeaderServer(packet)->seq >= windowStart && getHeaderServer(packet)->seq <= windowEnd) {
-      cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
+    if (packetCanFit(wrappingMode, getHeaderServer(packet)->seq, windowStart, windowEnd)) {
+      if (displayOutput == 1) {
+        cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
+      }
       lastSeq = getHeaderServer(packet)->seq;
       slidingWindow.push_front(packet);
       /* Count packet */
@@ -148,8 +177,10 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       }
       else if (checkSum == getHeaderServer(packet)->checkSum) {
         getHeaderServer(packet)->ack = true;
-        cout << "Checksum okay" << endl;
-        cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
+        if (displayOutput == 1) {
+          cout << "Checksum okay" << endl;
+          cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
+        }
         flag = (rand()% 20) + 1;
         if (errors == 2 && flag == 4) {
           cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
@@ -160,14 +191,24 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
           send(clientSocket, packet, packetSize, 0);
           windowStart++;
           windowEnd++;
-          cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+          if (windowEnd > seqEnd) {
+            windowEnd = 0;
+            wrappingMode = true;
+          }
+          if (windowStart > seqEnd) {
+            windowStart = 0;
+            wrappingMode = false;
+          }
+          if (displayOutput == 1) {
+            cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
+          }
           fwrite(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize, 1, file);
         }
       }
       else {
         cout << "Checksum failed" << endl;
         send(clientSocket, packet, packetSize, 0);
-        cout << printSlidingWindowServer(windowStart, windowEnd) << endl;
+        cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
       }
       slidingWindow.pop_back();
     }
