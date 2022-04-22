@@ -92,11 +92,6 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
   int flag = 0;
   bool wrappingMode = false;
   FILE *file;
-  int displayOutput;
-
-  cout << "1. Display Output" << endl << "2. No output (for large files)" << endl;
-  cout << "Please select an option: ";
-  cin >> displayOutput;
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -155,11 +150,8 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
 
     /* If the packet fits within the sliding window */
     if (packetCanFit(wrappingMode, getHeaderServer(packet)->seq, windowStart, windowEnd)) {
-      if (displayOutput == 1) {
-        cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
-      }
+      cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       lastSeq = getHeaderServer(packet)->seq;
-      slidingWindow.push_front(packet);
       /* Count packet */
       if (getHeaderServer(packet)->retransmitted) {
         retransmittedCounter++;
@@ -172,44 +164,49 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       flag = (rand()% 20) + 1;
       if (errors == 2 && flag == 4) {
         cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
-        send(clientSocket, packet, packetSize, 0);
+        //TODO remove send(clientSocket, packet, packetSize, 0);
       }
       else if (checkSum == getHeaderServer(packet)->checkSum) {
         getHeaderServer(packet)->ack = true;
-        if (displayOutput == 1) {
-          cout << "Checksum okay" << endl;
-          cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
-        }
+        cout << "Checksum okay" << endl;
+        cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
+        slidingWindow.push_front(packet);
         flag = (rand()% 20) + 1;
         if (errors == 2 && flag == 4) {
           cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
           getHeaderServer(packet)->ack = false;
-          send(clientSocket, packet, packetSize, 0);
+          //TODO remove send(clientSocket, packet, packetSize, 0);
         }
         else {
+          /* Keep writing and sliding window while the beginning is equal to the correct packet sequence */
+          for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+            if (getHeaderServer(*i)->seq == windowStart) {
+              windowStart++;
+              windowEnd++;
+              if (windowEnd > seqEnd) {
+                windowEnd = 0;
+                wrappingMode = true;
+              }
+              if (windowStart > seqEnd) {
+                windowStart = 0;
+                wrappingMode = false;
+              }
+              fwrite(packet + sizeof(struct hdr), getHeaderServer(*i)->dataSize, 1, file);
+              slidingWindow.remove(*i);
+              if (slidingWindow.empty()) {
+                break;
+              }
+            }
+          }
           send(clientSocket, packet, packetSize, 0);
-          windowStart++;
-          windowEnd++;
-          if (windowEnd > seqEnd) {
-            windowEnd = 0;
-            wrappingMode = true;
-          }
-          if (windowStart > seqEnd) {
-            windowStart = 0;
-            wrappingMode = false;
-          }
-          if (displayOutput == 1) {
-            cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
-          }
-          fwrite(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize, 1, file);
+          cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
         }
       }
       else {
         cout << "Checksum failed" << endl;
-        send(clientSocket, packet, packetSize, 0);
+        //TODO remove send(clientSocket, packet, packetSize, 0);
         cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
       }
-      slidingWindow.pop_back();
     }
     /* If we are using SR and got a packet out of order, we will send a negative ack back */
     else if (protocol == 2) {
