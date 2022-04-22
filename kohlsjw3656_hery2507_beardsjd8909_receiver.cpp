@@ -131,14 +131,16 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
   while (true) {
     packet = (char*) malloc(packetSize + 1);
     int bytesReceived = 0;
+    int totalBytes = 0;
     bytesReceived = recv(clientSocket, packet, packetSize, 0);
-
+    totalBytes = bytesReceived;
     /* Continue to read in bytes until we get the full packet */
-    while (bytesReceived != getHeaderServer(packet)->dataSize + sizeof(struct hdr)) {
-      bytesReceived += recv(clientSocket, packet + bytesReceived, getHeaderServer(packet)->dataSize + sizeof(hdr) - bytesReceived, 0);
+    while (totalBytes != getHeaderServer(packet)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
+      bytesReceived = recv(clientSocket, packet + totalBytes, getHeaderServer(packet)->dataSize + sizeof(hdr) - totalBytes, 0);
       if (bytesReceived == -1 || bytesReceived == 0) {
         break;
       }
+      totalBytes += bytesReceived;
     }
     if (bytesReceived == -1 || bytesReceived == 0) {
       break;
@@ -164,47 +166,49 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       flag = (rand()% 20) + 1;
       if (errors == 2 && flag == 4) {
         cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
-        //TODO remove send(clientSocket, packet, packetSize, 0);
       }
       else if (checkSum == getHeaderServer(packet)->checkSum) {
         getHeaderServer(packet)->ack = true;
         cout << "Checksum okay" << endl;
-        cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
         slidingWindow.push_front(packet);
+
         flag = (rand()% 20) + 1;
         if (errors == 2 && flag == 4) {
           cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
           getHeaderServer(packet)->ack = false;
-          //TODO remove send(clientSocket, packet, packetSize, 0);
+          slidingWindow.remove(packet);
         }
         else {
           /* Keep writing and sliding window while the beginning is equal to the correct packet sequence */
-          for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
-            if (getHeaderServer(*i)->seq == windowStart) {
-              windowStart++;
-              windowEnd++;
-              if (windowEnd > seqEnd) {
-                windowEnd = 0;
-                wrappingMode = true;
-              }
-              if (windowStart > seqEnd) {
-                windowStart = 0;
-                wrappingMode = false;
-              }
-              fwrite(packet + sizeof(struct hdr), getHeaderServer(*i)->dataSize, 1, file);
-              slidingWindow.remove(*i);
-              if (slidingWindow.empty()) {
+          bool loop = true;
+          while (loop) {
+            loop = false;
+            for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+              if (getHeaderServer(*i)->seq == windowStart) {
+                windowStart++;
+                windowEnd++;
+                if (windowEnd > seqEnd) {
+                  windowEnd = 0;
+                  wrappingMode = true;
+                }
+                if (windowStart > seqEnd) {
+                  windowStart = 0;
+                  wrappingMode = false;
+                }
+                fwrite(packet + sizeof(struct hdr), getHeaderServer(*i)->dataSize, 1, file);
+                slidingWindow.remove(*i);
+                loop = true;
                 break;
               }
             }
           }
+          cout << "Ack " << getHeaderServer(packet)->seq << " sent" << endl;
           send(clientSocket, packet, packetSize, 0);
           cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
         }
       }
       else {
         cout << "Checksum failed" << endl;
-        //TODO remove send(clientSocket, packet, packetSize, 0);
         cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
       }
     }
@@ -212,7 +216,6 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
     else if (protocol == 2) {
       cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       cout << "Packet " << getHeaderServer(packet)->seq <<  " nack" << endl;
-      send(clientSocket, packet, packetSize, 0);
     }
   }
   cout << "Last packet seq# received: " << lastSeq << endl;

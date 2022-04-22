@@ -1,6 +1,3 @@
-
-//#define DEBUG
-
 #include <iostream>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -11,9 +8,13 @@
 #include <list>
 #include <iomanip>
 #include <chrono>
+#include <sys/epoll.h>
 #include "boost/crc.hpp"
 
 using namespace std;
+
+//#define DEBUG
+#define MAX_EVENTS 10
 
 struct hdr {
   int seq;
@@ -116,6 +117,22 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
     return -1;
   }
 
+  /* Create epoll file descriptor */
+  struct epoll_event ev, events[MAX_EVENTS];
+  int nfds, epollfd;
+  epollfd = epoll_create1(0);
+  if (epollfd == -1) {
+    perror("epoll_create1");
+    return -1;
+  }
+
+  ev.events = EPOLLIN;
+  ev.data.fd = sock;
+  if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev) == -1) {
+    perror("epoll_ctl: listen_sock");
+    return -1;
+  }
+
   /* While we haven't reached the end of the file */
   while(!feof(file)) {
     /* While our sliding window hasn't been filled up */
@@ -149,85 +166,89 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
       if (!getHeader(*i)->sent) {
         cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
         getHeader(*i)->sent = true;
-
-        //TODO timeoutClocks.push_back(clock::now());
         originalCounter++;
         #ifdef DEBUG
           printPacket(*i, getHeader(*i)->dataSize);
         #endif
         send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
       }
-      /* If the duration is greater than timeout interval, and we haven't acked the packet, resend */
-//TODO      if (((double)(clock() - getHeader(*i)->sentTime) / (double) ((double) CLOCKS_PER_SEC / 1000)) > timeoutInterval && !getHeader(*i)->ack && getHeader(*i)->sent) {
-      if (false) {
-        cout << "Packet " << getHeader(*i)->seq << " *****Timed Out *****" << endl;
-        /* if GBN, retransmit whole window */
+    }
+    /* Responses */
+    while (!slidingWindow.empty()) {
+      nfds = epoll_wait(epollfd, events, MAX_EVENTS, (int)timeoutInterval);
+      /* Check for timeout */
+      if (nfds == 0 && !slidingWindow.empty()) {
+        /* If GBN, resend whole window */
         if (protocol == 1) {
-          cout << "Retransmitting Window" << endl;
           for (auto j = slidingWindow.rbegin(); j != slidingWindow.rend(); ++j) {
+            cout << "Packet " << getHeader(*j)->seq << " *****Timed Out *****" << endl;
             cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
-            //TODO getHeader(*j)->sentTime = clock();
             getHeader(*j)->retransmitted = true;
             retransmittedCounter++;
             send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
           }
-        } else {
-          cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
-          //TODO getHeader(*i)->sentTime = clock();
-          getHeader(*i)->retransmitted = true;
+        }
+        else {
+          cout << "Packet " << getHeader(slidingWindow.back())->seq << " *****Timed Out *****" << endl;
+          cout << "Packet " << getHeader(slidingWindow.back())->seq << " Re-transmitted." << endl;
+          getHeader(slidingWindow.back())->retransmitted = true;
           retransmittedCounter++;
-          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+          send(sock, slidingWindow.back(), getHeader(slidingWindow.back())->dataSize + sizeof(struct hdr), 0);
         }
       }
-    }
-    /* Responses */
-    while (!slidingWindow.empty()) {
-      int bytesReceived = 0;
-      packet = (char*) malloc(packetSize + 1);
-      bytesReceived = recv(sock, packet, packetSize, 0);
-
-      /* Continue to read in bytes until we get the full packet */
-      while (bytesReceived != packetSize) {
-        bytesReceived += recv(sock, packet + bytesReceived, packetSize - bytesReceived, 0);
-        if (bytesReceived == -1 || bytesReceived == 0) {
-          break;
-        }
-      }
-      if (bytesReceived == -1 || bytesReceived == 0) {
-        break;
+      else if (nfds == -1) {
+        cout << "Error getting event" << endl;
+        return -1;
       }
       else {
-        if (getHeader(packet)->ack) {
+
+
+        int bytesReceived = 0;
+        packet = (char *) malloc(packetSize + 1);
+        bytesReceived = recv(sock, packet, packetSize, 0);
+        /* Continue to read in bytes until we get the full packet */
+        while (bytesReceived != packetSize) {
+          bytesReceived += recv(sock, packet + bytesReceived, packetSize - bytesReceived, 0);
+          if (bytesReceived == -1 || bytesReceived == 0) {
+            break;
+          }
+        }
+#ifdef DEBUG
+        cout << bytesReceived << endl;
+#endif
+        if (bytesReceived == -1 || bytesReceived == 0) {
+          break;
+        } else {
           /* Remove packets from sliding window while the beginning is equal to the correct packet sequence */
-          for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
-            if (getHeader(*i)->seq == windowStart && getHeader(packet)->ack) {
-              windowStart++;
-              windowEnd++;
-              if (windowEnd > seqEnd) {
-                windowEnd = 0;
-                wrappingMode = true;
+          bool loop = true;
+          while (loop) {
+            loop = false;
+            for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+              /* If the packet that we received is in our window, update the ack status */
+              if (getHeader(*i)->seq == getHeader(packet)->seq) {
+                getHeader(*i)->ack = getHeader(packet)->ack;
               }
-              if (windowStart > seqEnd) {
-                windowStart = 0;
-                wrappingMode = false;
-              }
-              slidingWindow.remove(*i);
-              if (slidingWindow.empty()) {
+              /* If the start of the window has been acked, slide the window */
+              if (getHeader(*i)->seq == windowStart && getHeader(*i)->ack) {
+                windowStart++;
+                windowEnd++;
+                if (windowEnd > seqEnd) {
+                  windowEnd = 0;
+                  wrappingMode = true;
+                }
+                if (windowStart > seqEnd) {
+                  windowStart = 0;
+                  wrappingMode = false;
+                }
+                slidingWindow.remove(*i);
+                loop = true;
                 break;
               }
             }
           }
-          cout << "Ack " << getHeader(packet)->seq << " received" << endl;
-          cout << printSlidingWindow(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
-        }
-        else {
-          for (auto j = slidingWindow.rbegin(); j != slidingWindow.rend(); ++j) {
-            cout << "Packet " << getHeader(*j)->seq << " *****Timed Out *****" << endl;
-            cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
-            //TODO getHeader(*j)->sentTime = clock();
-            getHeader(*j)->retransmitted = true;
-            retransmittedCounter++;
-            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
+          if (getHeader(packet)->ack) {
+            cout << "Ack " << getHeader(packet)->seq << " received" << endl;
+            cout << printSlidingWindow(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
           }
         }
       }
@@ -244,5 +265,6 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
 
   fclose(file);
   close(sock);
+  close(epollfd);
   return 0;
 }
