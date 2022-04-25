@@ -113,6 +113,8 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       cin >> lostAck;
       acksToLose.push_front(lostAck);
     }
+    packetsToDrop.sort(std::greater<>());
+    acksToLose.sort(std::greater<>());
   }
 
   /* Bind the ip address and port to a socket */
@@ -195,7 +197,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
         for (auto i = packetsToDrop.rbegin(); i != packetsToDrop.rend(); ++i) {
           if (*i == getHeaderServer(packet)->seq) {
             cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
-            packetsToDrop.remove(*i);
+            packetsToDrop.pop_back();
             dropped = true;
             break;
           }
@@ -217,7 +219,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
           for (auto i = acksToLose.rbegin(); i != acksToLose.rend(); ++i) {
             if (*i == getHeaderServer(packet)->seq) {
               cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
-              acksToLose.remove(*i);
+              acksToLose.pop_back();
               getHeaderServer(packet)->ack = false;
               slidingWindow.remove(packet);
               dropped = true;
