@@ -232,11 +232,14 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
           }
         }
         else {
-          cout << "Packet " << getHeader(slidingWindow.back())->seq << " *****Timed Out *****" << endl;
-          cout << "Packet " << getHeader(slidingWindow.back())->seq << " Re-transmitted." << endl;
-          getHeader(slidingWindow.back())->retransmitted = true;
-          retransmittedCounter++;
-          send(sock, slidingWindow.back(), getHeader(slidingWindow.back())->dataSize + sizeof(struct hdr), 0);
+          for (auto j = slidingWindow.rbegin(); j != slidingWindow.rend(); ++j) {
+            cout << "Packet " << getHeader(*j)->seq << " *****Timed Out *****" << endl;
+            cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
+            getHeader(*j)->retransmitted = true;
+            retransmittedCounter++;
+            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
+            break;
+          }
         }
       }
       else if (nfds == -1) {
