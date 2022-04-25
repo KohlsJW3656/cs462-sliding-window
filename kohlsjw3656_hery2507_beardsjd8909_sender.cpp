@@ -191,21 +191,9 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
           cout << " with damaged checksum " << endl;
           uint32_t tempSum = getHeader(*i)->checkSum;
           getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
-          int totalBytes = 0;
-          int bytesSent = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-          totalBytes += bytesSent;
-          while (totalBytes != getHeader(*i)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-            bytesSent = send(sock, *i + totalBytes, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-            if (bytesSent == -1 || bytesSent == 0) {
-              break;
-            }
-            totalBytes += bytesSent;
-          }
+          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
           getHeader(*i)->checkSum = tempSum;
           corrupted = true;
-          if (bytesSent == -1 || bytesSent == 0) {
-            break;
-          }
         }
         else if (errors == 3) {
           for (auto j = packetsToCorrupt.rbegin(); j != packetsToCorrupt.rend(); ++j) {
@@ -213,41 +201,18 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
               cout << " with damaged checksum " << endl;
               uint32_t tempSum = getHeader(*i)->checkSum;
               getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
-              int totalBytes = 0;
-              int bytesSent = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-              totalBytes += bytesSent;
-              while (totalBytes != getHeader(*i)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-                bytesSent = send(sock, *i + totalBytes, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-                if (bytesSent == -1 || bytesSent == 0) {
-                  break;
-                }
-                totalBytes += bytesSent;
-              }
+              send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
               getHeader(*i)->checkSum = tempSum;
               packetsToCorrupt.pop_back();
 
               corrupted = true;
-              if (bytesSent == -1 || bytesSent == 0) {
-                break;
-              }
+              break;
             }
           }
         }
         if (!corrupted) {
           cout << endl;
-          int totalBytes = 0;
-          int bytesSent = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-          totalBytes += bytesSent;
-          while (totalBytes != getHeader(*i)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-            bytesSent = send(sock, *i + totalBytes, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-            if (bytesSent == -1 || bytesSent == 0) {
-              break;
-            }
-            totalBytes += bytesSent;
-          }
-          if (bytesSent == -1 || bytesSent == 0) {
-            break;
-          }
+          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
         }
       }
     }
@@ -263,19 +228,7 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
             cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
             getHeader(*j)->retransmitted = true;
             retransmittedCounter++;
-            int totalBytes = 0;
-            int bytesSent = send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
-            totalBytes += bytesSent;
-            while (totalBytes != getHeader(*j)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-              bytesSent = send(sock, *j + totalBytes, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
-              if (bytesSent == -1 || bytesSent == 0) {
-                break;
-              }
-              totalBytes += bytesSent;
-            }
-            if (bytesSent == -1 || bytesSent == 0) {
-              break;
-            }
+            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
           }
         }
         else {
@@ -284,19 +237,8 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
             cout << "Packet " << getHeader(*j)->seq << " Re-transmitted." << endl;
             getHeader(*j)->retransmitted = true;
             retransmittedCounter++;
-            int totalBytes = 0;
-            int bytesSent = send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
-            totalBytes += bytesSent;
-            while (totalBytes != getHeader(*j)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-              bytesSent = send(sock, *j + totalBytes, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
-              if (bytesSent == -1 || bytesSent == 0) {
-                break;
-              }
-              totalBytes += bytesSent;
-            }
-            if (bytesSent == -1 || bytesSent == 0) {
-              break;
-            }
+            send(sock, *j, getHeader(*j)->dataSize + sizeof(struct hdr), 0);
+            break;
           }
         }
       }
@@ -360,19 +302,7 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
                 cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
                 retransmittedCounter++;
                 getHeader(*i)->retransmitted = true;
-                int totalBytes = 0;
-                int bytesSent = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-                totalBytes += bytesSent;
-                while (totalBytes != getHeader(*i)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
-                  bytesSent = send(sock, *i + totalBytes, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
-                  if (bytesSent == -1 || bytesSent == 0) {
-                    break;
-                  }
-                  totalBytes += bytesSent;
-                }
-                if (bytesSent == -1 || bytesSent == 0) {
-                  break;
-                }
+                send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
               }
             }
           }
