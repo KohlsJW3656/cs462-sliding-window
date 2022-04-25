@@ -100,6 +100,7 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
       packetsToCorrupt.push_front(corrupted);
     }
   }
+  packetsToCorrupt.sort(dec);
 
   do {
     cout << "Please enter the file name: ";
@@ -202,7 +203,8 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
               getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
               send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
               getHeader(*i)->checkSum = tempSum;
-              packetsToCorrupt.remove(*j);
+              packetsToCorrupt.pop_back();
+
               corrupted = true;
               break;
             }
