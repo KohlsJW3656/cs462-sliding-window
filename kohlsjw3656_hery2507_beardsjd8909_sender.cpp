@@ -213,8 +213,6 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
         return -1;
       }
       else {
-
-
         int bytesReceived = 0;
         packet = (char *) malloc(packetSize + 1);
         bytesReceived = recv(sock, packet, packetSize, 0);
@@ -261,6 +259,12 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
           if (getHeader(packet)->ack) {
             cout << "Ack " << getHeader(packet)->seq << " received" << endl;
             cout << printSlidingWindow(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
+          }
+          else if (protocol == 2 && !getHeader(packet)->ack) {
+            cout << "Nack " << getHeader(packet)->seq << " received" << endl;
+            cout << "Packet " << getHeader(packet)->seq << " Re-transmitted." << endl;
+            retransmittedCounter++;
+            send(sock, packet, getHeader(packet)->dataSize + sizeof(struct hdr), 0);
           }
         }
       }

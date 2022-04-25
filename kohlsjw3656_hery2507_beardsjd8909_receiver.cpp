@@ -215,6 +215,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
     else if (protocol == 2) {
       cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
       cout << "Packet " << getHeaderServer(packet)->seq <<  " nack" << endl;
+      send(clientSocket, packet, packetSize, 0);
     }
   }
   cout << "Last packet seq# received: " << lastSeq << endl;
