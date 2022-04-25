@@ -208,13 +208,12 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       }
       else {
         cout << "Checksum failed" << endl;
-        cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
         /* If we are using SR and the checksum failed, we will send a negative ack back */
         if (protocol == 2) {
           cout << "Nack " << getHeaderServer(packet)->seq <<  " sent" << endl;
           send(clientSocket, packet, packetSize, 0);
-          cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
         }
+        cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
       }
     }
   }

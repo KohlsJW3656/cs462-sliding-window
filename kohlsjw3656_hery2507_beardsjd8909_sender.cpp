@@ -261,13 +261,13 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
             cout << printSlidingWindow(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
           }
           else if (protocol == 2 && !getHeader(packet)->ack) {
-            cout << "Nack " << getHeader(packet)->seq << " received" << endl;
-            cout << "Packet " << getHeader(packet)->seq << " Re-transmitted." << endl;
-            getHeader(packet)->retransmitted = true;
-            retransmittedCounter++;
             /* Find the packet in the window and retransmit it */
             for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
               if (getHeader(*i)->seq == getHeader(packet)->seq) {
+                cout << "Nack " << getHeader(*i)->seq << " received" << endl;
+                cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
+                retransmittedCounter++;
+                getHeader(*i)->retransmitted = true;
                 send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
               }
             }
