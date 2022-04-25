@@ -302,7 +302,19 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
                 cout << "Packet " << getHeader(*i)->seq << " Re-transmitted." << endl;
                 retransmittedCounter++;
                 getHeader(*i)->retransmitted = true;
-                send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+                int totalBytes = 0;
+                int bytesSent = send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+                totalBytes += bytesSent;
+                while (totalBytes != getHeader(*i)->dataSize + sizeof(struct hdr) && totalBytes != packetSize) {
+                  bytesSent = send(sock, *i + totalBytes, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+                  if (bytesSent == -1 || bytesSent == 0) {
+                    break;
+                  }
+                  totalBytes += bytesSent;
+                }
+                if (bytesSent == -1 || bytesSent == 0) {
+                  break;
+                }
               }
             }
           }
