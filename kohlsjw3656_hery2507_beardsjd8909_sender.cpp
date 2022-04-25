@@ -265,7 +265,12 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
             cout << "Packet " << getHeader(packet)->seq << " Re-transmitted." << endl;
             getHeader(packet)->retransmitted = true;
             retransmittedCounter++;
-            send(sock, packet, getHeader(packet)->dataSize + sizeof(struct hdr), 0);
+            /* Find the packet in the window and retransmit it */
+            for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
+              if (getHeader(*i)->seq == getHeader(packet)->seq) {
+                send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+              }
+            }
           }
         }
       }
