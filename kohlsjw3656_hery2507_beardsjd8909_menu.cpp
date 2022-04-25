@@ -3,15 +3,14 @@
 //
 
 #include <iostream>
-#include <chrono>
+#include <math.h>
 #include "kohlsjw3656_hery2507_beardsjd8909_sender.h"
 #include "kohlsjw3656_hery2507_beardsjd8909_receiver.h"
 using namespace std;
 
 int main() {
   string ip;
-  double timeoutInterval;
-  int port, protocol, packetSize, timeoutType, multiFactor, slidingWindowSize, seqEnd, userType, errors;
+  int port, protocol, packetSize, timeoutType, timeoutInterval, multiFactor, slidingWindowSize, seqEnd, userType, errors;
 
   cout << "1. Sender" << endl << "2. Receiver\n";
   cout << "Please select an option: ";
@@ -50,7 +49,10 @@ int main() {
       cout << "Multiplication factor for timeout: ";
       cin >> multiFactor;
       double avg = system(("ping " + ip + " -c 3 | tail -1| awk '{print $4}' | cut -d '/' -f 2").c_str());
-      timeoutInterval = avg * multiFactor;
+      if (avg < 1) {
+        avg = 1;
+      }
+      timeoutInterval = ceil(avg) * multiFactor;
     }
     cout << "1. No Errors" << endl << "2. Random Errors" << endl << "3. User Specified" << endl;
     cout << "Please select an option: ";

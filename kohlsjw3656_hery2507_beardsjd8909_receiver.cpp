@@ -209,13 +209,13 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       else {
         cout << "Checksum failed" << endl;
         cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
+        /* If we are using SR and the checksum failed, we will send a negative ack back */
+        if (protocol == 2) {
+          cout << "Packet " << getHeaderServer(packet)->seq <<  " nack sent" << endl;
+          send(clientSocket, packet, packetSize, 0);
+          cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
+        }
       }
-    }
-    /* If we are using SR and got a packet out of order, we will send a negative ack back */
-    else if (protocol == 2) {
-      cout << "Packet " << getHeaderServer(packet)->seq << " received" << endl;
-      cout << "Packet " << getHeaderServer(packet)->seq <<  " nack" << endl;
-      send(clientSocket, packet, packetSize, 0);
     }
   }
   cout << "Last packet seq# received: " << lastSeq << endl;

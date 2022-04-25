@@ -6,6 +6,6 @@
 #define CS462_SLIDING_WINDOW_KOHLSJW3656_HERY2507_BEARDSJD8909_SENDER_H
 using namespace std;
 
-int sender(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize, int seqEnd, int errors);
+int sender(string ip, int port, int protocol, int packetSize, int timeoutInterval, int slidingWindowSize, int seqEnd, int errors);
 
 #endif //CS462_SLIDING_WINDOW_KOHLSJW3656_HERY2507_BEARDSJD8909_SENDER_H

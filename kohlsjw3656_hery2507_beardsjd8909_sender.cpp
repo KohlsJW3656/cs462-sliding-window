@@ -66,7 +66,7 @@ string printSlidingWindow(bool wrappingMode, int windowStart, int windowEnd, int
   return slidingWindow += to_string(windowEnd) + "]";
 }
 
-int sender(string ip, int port, int protocol, int packetSize, double timeoutInterval, int slidingWindowSize, int seqEnd, int errors) {
+int sender(string ip, int port, int protocol, int packetSize, int timeoutInterval, int slidingWindowSize, int seqEnd, int errors) {
   char *filename = (char*)malloc(20 * sizeof(char));
   FILE *file;
   char* packet;
@@ -187,7 +187,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
     }
     /* Responses */
     while (!slidingWindow.empty()) {
-      nfds = epoll_wait(epollfd, events, MAX_EVENTS, (int)timeoutInterval);
+      nfds = epoll_wait(epollfd, events, MAX_EVENTS, timeoutInterval);
       /* Check for timeout */
       if (nfds == 0 && !slidingWindow.empty()) {
         /* If GBN, resend whole window */
@@ -263,6 +263,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
           else if (protocol == 2 && !getHeader(packet)->ack) {
             cout << "Nack " << getHeader(packet)->seq << " received" << endl;
             cout << "Packet " << getHeader(packet)->seq << " Re-transmitted." << endl;
+            getHeader(packet)->retransmitted = true;
             retransmittedCounter++;
             send(sock, packet, getHeader(packet)->dataSize + sizeof(struct hdr), 0);
           }
