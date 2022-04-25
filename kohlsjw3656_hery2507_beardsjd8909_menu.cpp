@@ -49,12 +49,8 @@ int main() {
     else {
       cout << "Multiplication factor for timeout: ";
       cin >> multiFactor;
-      auto start = std::chrono::system_clock::now();
-      system(("ping " + ip + " -c 3").c_str());
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> totalTime = end - start;
-      double t = totalTime.count();
-      timeoutInterval = (t/3) * multiFactor;
+      double avg = system(("ping " + ip + " -c 3 | tail -1| awk '{print $4}' | cut -d '/' -f 2").c_str());
+      timeoutInterval = avg * multiFactor;
     }
     cout << "1. No Errors" << endl << "2. Random Errors" << endl << "3. User Specified" << endl;
     cout << "Please select an option: ";

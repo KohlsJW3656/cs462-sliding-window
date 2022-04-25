@@ -6,7 +6,6 @@
 
 #include <bits/stdc++.h>
 #include <iostream>
-#include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -163,7 +162,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       }
       /* Calculate the Checksum */
       uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize);
-      flag = (rand()% 20) + 1;
+      flag = (rand()% 50) + 1;
       if (errors == 2 && flag == 4) {
         cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
       }
@@ -172,7 +171,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
         cout << "Checksum okay" << endl;
         slidingWindow.push_front(packet);
 
-        flag = (rand()% 20) + 1;
+        flag = (rand()% 50) + 1;
         if (errors == 2 && flag == 4) {
           cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
           getHeaderServer(packet)->ack = false;
@@ -184,7 +183,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
           while (loop) {
             loop = false;
             for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
-              if (getHeaderServer(*i)->seq == windowStart) {
+              if (getHeaderServer(*i)->seq == windowStart && getHeaderServer(*i)->ack) {
                 windowStart++;
                 windowEnd++;
                 if (windowEnd > seqEnd) {
@@ -195,7 +194,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
                   windowStart = 0;
                   wrappingMode = false;
                 }
-                fwrite(packet + sizeof(struct hdr), getHeaderServer(*i)->dataSize, 1, file);
+                fwrite(*i + sizeof(struct hdr), getHeaderServer(*i)->dataSize, 1, file);
                 slidingWindow.remove(*i);
                 loop = true;
                 break;

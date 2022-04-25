@@ -81,6 +81,7 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
   unsigned int throughput = 0;
   bool wrappingMode = false;
   srand (time(NULL));
+  int flag = 0;
   using clock = std::chrono::system_clock;
   //using ms = std::chrono::duration<double, std::milli>;
   using sec = std::chrono::duration<double>;
@@ -164,13 +165,24 @@ int sender(string ip, int port, int protocol, int packetSize, double timeoutInte
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* If we haven't sent the packet and haven't acked */
       if (!getHeader(*i)->sent) {
-        cout << "Packet " << getHeader(*i)->seq << " sent" << endl;
+        cout << "Packet " << getHeader(*i)->seq << " sent";
         getHeader(*i)->sent = true;
         originalCounter++;
         #ifdef DEBUG
           printPacket(*i, getHeader(*i)->dataSize);
         #endif
-        send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+        flag = (rand()% 50) + 1;
+        if (errors == 2 && flag == 4) {
+          cout << " with damaged checksum " << endl;
+          uint32_t tempSum = getHeader(*i)->checkSum;
+          getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
+          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+          getHeader(*i)->checkSum = tempSum;
+        }
+        else {
+          cout << endl;
+          send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+        }
       }
     }
     /* Responses */
