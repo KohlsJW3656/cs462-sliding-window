@@ -100,7 +100,7 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
       packetsToCorrupt.push_front(corrupted);
     }
   }
-  packetsToCorrupt.sort(dec);
+  packetsToCorrupt.sort(std::greater<>());
 
   do {
     cout << "Please enter the file name: ";
