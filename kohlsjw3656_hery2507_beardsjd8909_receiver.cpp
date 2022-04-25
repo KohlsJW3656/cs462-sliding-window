@@ -75,6 +75,7 @@ bool packetCanFit(int wrappingMode, int packetSeq, int windowStart, int windowEn
 }
 
 int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int seqEnd, int errors) {
+  FILE *file;
   list<char*> slidingWindow;
   char* packet;
   int listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -90,7 +91,29 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
   srand (time(NULL));
   int flag = 0;
   bool wrappingMode = false;
-  FILE *file;
+  list<int> packetsToDrop;
+  list<int> acksToLose;
+  int numPacketsToDrop;
+  int numAcksToLose;
+
+  if (errors == 3) {
+    cout << "Number of packets to drop: ";
+    cin >> numPacketsToDrop;
+    for (int i = 0; i < numPacketsToDrop; i++) {
+      cout << "Sequence to drop: ";
+      int packToDrop;
+      cin >> packToDrop;
+      packetsToDrop.push_front(packToDrop);
+    }
+    cout << "Number of acks to lose: ";
+    cin >> numAcksToLose;
+    for (int i = 0; i < numAcksToLose; i++) {
+      cout << "Sequence to lose: ";
+      int lostAck;
+      cin >> lostAck;
+      acksToLose.push_front(lostAck);
+    }
+  }
 
   /* Bind the ip address and port to a socket */
   sockaddr_in hint;
@@ -163,10 +186,22 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
       /* Calculate the Checksum */
       uint32_t checkSum = GetCrc32Server(packet + sizeof(struct hdr), getHeaderServer(packet)->dataSize);
       flag = (rand()% 50) + 1;
+      bool dropped = false;
       if (errors == 2 && flag == 4) {
         cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
+        dropped = true;
       }
-      else if (checkSum == getHeaderServer(packet)->checkSum) {
+      else if (errors == 3) {
+        for (auto i = packetsToDrop.rbegin(); i != packetsToDrop.rend(); ++i) {
+          if (*i == getHeaderServer(packet)->seq) {
+            cout << "Packet " << getHeaderServer(packet)->seq << " dropped" << endl;
+            packetsToDrop.remove(*i);
+            dropped = true;
+            break;
+          }
+        }
+      }
+      if (checkSum == getHeaderServer(packet)->checkSum && !dropped) {
         getHeaderServer(packet)->ack = true;
         cout << "Checksum okay" << endl;
         slidingWindow.push_front(packet);
@@ -176,8 +211,21 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
           cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
           getHeaderServer(packet)->ack = false;
           slidingWindow.remove(packet);
+          dropped = true;
         }
-        else {
+        else if (errors == 3) {
+          for (auto i = acksToLose.rbegin(); i != acksToLose.rend(); ++i) {
+            if (*i == getHeaderServer(packet)->seq) {
+              cout << "Ack " << getHeaderServer(packet)->seq << " lost" << endl;
+              acksToLose.remove(*i);
+              getHeaderServer(packet)->ack = false;
+              slidingWindow.remove(packet);
+              dropped = true;
+              break;
+            }
+          }
+        }
+        if (!dropped) {
           /* Keep writing and sliding window while the beginning is equal to the correct packet sequence */
           bool loop = true;
           while (loop) {
@@ -206,7 +254,7 @@ int receiver(int port, int protocol, int packetSize, int slidingWindowSize, int 
           cout << printSlidingWindowServer(wrappingMode, windowStart, windowEnd, seqEnd) << endl;
         }
       }
-      else {
+      else if (!dropped){
         cout << "Checksum failed" << endl;
         /* If we are using SR and the checksum failed, we will send a negative ack back */
         if (protocol == 2) {

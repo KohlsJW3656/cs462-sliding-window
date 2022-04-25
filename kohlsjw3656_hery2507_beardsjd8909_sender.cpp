@@ -85,8 +85,21 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
   using clock = std::chrono::system_clock;
   //using ms = std::chrono::duration<double, std::milli>;
   using sec = std::chrono::duration<double>;
+  list<int>packetsToCorrupt;
+  int numPacketsToCorrupt;
 
   const auto startTime = clock::now();
+
+  if (errors == 3) {
+    cout << "Number of packets to corrupt: ";
+    cin >> numPacketsToCorrupt;
+    for (int i = 0; i < numPacketsToCorrupt; i++) {
+      cout << "Sequence to corrupt: ";
+      int corrupted;
+      cin >> corrupted;
+      packetsToCorrupt.push_front(corrupted);
+    }
+  }
 
   do {
     cout << "Please enter the file name: ";
@@ -165,6 +178,7 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
     for (auto i = slidingWindow.rbegin(); i != slidingWindow.rend(); ++i) {
       /* If we haven't sent the packet and haven't acked */
       if (!getHeader(*i)->sent) {
+        bool corrupted = false;
         cout << "Packet " << getHeader(*i)->seq << " sent";
         getHeader(*i)->sent = true;
         originalCounter++;
@@ -178,8 +192,23 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
           getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
           send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
           getHeader(*i)->checkSum = tempSum;
+          corrupted = true;
         }
-        else {
+        else if (errors == 3) {
+          for (auto j = packetsToCorrupt.rbegin(); j != packetsToCorrupt.rend(); ++j) {
+            if (*j == getHeader(*i)->seq) {
+              cout << " with damaged checksum " << endl;
+              uint32_t tempSum = getHeader(*i)->checkSum;
+              getHeader(*i)->checkSum = GetCrc32(packet, getHeader(*i)->dataSize + sizeof(struct hdr));
+              send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
+              getHeader(*i)->checkSum = tempSum;
+              packetsToCorrupt.remove(*j);
+              corrupted = true;
+              break;
+            }
+          }
+        }
+        if (!corrupted) {
           cout << endl;
           send(sock, *i, getHeader(*i)->dataSize + sizeof(struct hdr), 0);
         }
