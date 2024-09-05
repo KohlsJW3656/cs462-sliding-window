@@ -257,9 +257,9 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
             break;
           }
         }
-#ifdef DEBUG
-        cout << bytesReceived << endl;
-#endif
+        #ifdef DEBUG
+          cout << bytesReceived << endl;
+        #endif
         if (bytesReceived == -1 || bytesReceived == 0) {
           break;
         } else {
@@ -324,3 +324,4 @@ int sender(string ip, int port, int protocol, int packetSize, int timeoutInterva
   close(epollfd);
   return 0;
 }
+

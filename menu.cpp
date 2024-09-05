@@ -4,8 +4,8 @@
 
 #include <iostream>
 #include <math.h>
-#include "kohlsjw3656_hery2507_beardsjd8909_sender.h"
-#include "kohlsjw3656_hery2507_beardsjd8909_receiver.h"
+#include "sender.h"
+#include "receiver.h"
 using namespace std;
 
 int main() {
@@ -88,3 +88,4 @@ int main() {
     receiver(port, protocol, packetSize, slidingWindowSize, seqEnd, errors);
   }
 }
+
